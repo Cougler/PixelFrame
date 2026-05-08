@@ -1,0 +1,5 @@
+{
+  "name": "PixelFrame",
+  "url": "https://pixel-studio-swart.vercel.app",
+  "notes": "PixelFrame (renamed from Pixel Studio) is a web-based pixel art editor: pencil/eraser/bucket/eyedropper/color-eraser/line/rect/ellipse plus marquee selection with full transform (move/scale/rotate handles + commit/cancel UI), brush sizes via visual popover, PNG import with target grid + sharp/smooth sampling, layers, PICO-8 palette with auto ramps, IndexedDB autosave, undo/redo. Just renamed everywhere and pushed to GitHub. Next: round brushes or animation frames; also rename the Vercel project so the URL matches."
+}

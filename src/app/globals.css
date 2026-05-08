@@ -1,0 +1,79 @@
+@import "tailwindcss";
+
+:root {
+  --bg: #0c0c10;
+  --panel: #15151c;
+  --panel-2: #1c1c25;
+  --border: #2a2a36;
+  --border-2: #383848;
+  --text: #e8e8ee;
+  --text-dim: #9090a0;
+  --text-muted: #5a5a6a;
+  --accent: #ff7a59;
+  --accent-2: #5e8cff;
+  --hover: #22222d;
+  --active: #2c2c3a;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--text);
+  font-family: ui-sans-serif, system-ui, -apple-system, "SF Pro Text", Inter, sans-serif;
+  font-size: 13px;
+  -webkit-font-smoothing: antialiased;
+}
+
+button {
+  font-family: inherit;
+  font-size: inherit;
+  color: inherit;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+input,
+select {
+  font-family: inherit;
+  font-size: inherit;
+}
+
+.scroll-thin::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.scroll-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
+.scroll-thin::-webkit-scrollbar-thumb {
+  background: var(--border-2);
+  border-radius: 4px;
+}
+.scroll-thin::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
+
+.checker {
+  background-image:
+    linear-gradient(45deg, #1a1a22 25%, transparent 25%),
+    linear-gradient(-45deg, #1a1a22 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #1a1a22 75%),
+    linear-gradient(-45deg, transparent 75%, #1a1a22 75%);
+  background-size: 16px 16px;
+  background-position: 0 0, 0 8px, 8px -8px, -8px 0;
+  background-color: #14141b;
+}
+
+.no-select {
+  user-select: none;
+  -webkit-user-select: none;
+}
