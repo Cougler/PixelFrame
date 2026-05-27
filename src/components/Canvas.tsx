@@ -552,6 +552,7 @@ export default function Canvas() {
         });
         lastPixel.current = p;
         useStore.getState().bumpLayerRev(activeLayerId);
+        drawOverlay();
       } else if (
         (tool === "line" || tool === "rectangle" || tool === "ellipse") &&
         strokeStart.current
