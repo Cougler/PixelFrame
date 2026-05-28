@@ -27,6 +27,7 @@ import {
   hitTestHandle,
   screenToWorld,
 } from "@/lib/floating";
+import { decodeSprite, findSprite, SPRITE_DRAG_TYPE } from "@/lib/kits";
 import FloatingActions from "./FloatingActions";
 
 type Pixel = { x: number; y: number };
@@ -524,6 +525,11 @@ export default function Canvas() {
           newT = applyScaleDrag(f, startTransform, currWorld, handle, e.shiftKey);
         }
         useStore.getState().updateFloatingTransform(newT);
+        // Keep the cursor highlight tracking the pointer during transform drags
+        // so the box doesn't appear frozen at the drag-start position.
+        const p = eventToPixel(e);
+        useStore.getState().setCursorPixel(inBounds(p) ? p : null);
+        drawOverlay();
         return;
       }
     }
@@ -636,7 +642,39 @@ export default function Canvas() {
   };
 
   return (
-    <div ref={containerRef} className="checker no-select" style={{ position: "relative", flex: 1, overflow: "hidden" }}>
+    <div
+      ref={containerRef}
+      className="checker no-select"
+      style={{ position: "relative", flex: 1, overflow: "hidden" }}
+      onDragOver={(e) => {
+        if (e.dataTransfer.types.includes(SPRITE_DRAG_TYPE)) {
+          e.preventDefault();
+          e.dataTransfer.dropEffect = "copy";
+        }
+      }}
+      onDrop={(e) => {
+        const raw = e.dataTransfer.getData(SPRITE_DRAG_TYPE);
+        if (!raw) return;
+        e.preventDefault();
+        try {
+          const { kitId, spriteId } = JSON.parse(raw) as {
+            kitId: string;
+            spriteId: string;
+          };
+          const kits = useStore.getState().kits;
+          if (!kits) return;
+          const sprite = findSprite(kits, kitId, spriteId);
+          if (!sprite) return;
+          const pixels = decodeSprite(sprite);
+          const p = eventToPixel(e);
+          useStore
+            .getState()
+            .stampSprite(pixels, sprite.w, sprite.h, p.x, p.y);
+        } catch (err) {
+          console.error("Sprite drop failed:", err);
+        }
+      }}
+    >
       <canvas
         ref={canvasRef}
         style={{ position: "absolute", inset: 0, imageRendering: "pixelated" }}

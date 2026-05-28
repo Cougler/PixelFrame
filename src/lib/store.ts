@@ -18,6 +18,15 @@ import {
   deleteLayerBuffer,
   cloneBuffer,
 } from "./pixels";
+import type { Kit, KitSprite } from "./kits";
+import { decodeSprite, encodePixelsToKitFormat, findSprite } from "./kits";
+import {
+  isUserKit,
+  loadUserKitsFromStorage,
+  makeUserKit,
+  saveUserKitsToStorage,
+  upsertSpriteInUserKit,
+} from "./user-kits";
 
 const HISTORY_LIMIT = 100;
 
@@ -46,6 +55,20 @@ type State = {
   clipboard: Clipboard | null;
   floating: FloatingSelection | null;
   docVersion: number;
+  kits: Kit[] | null;
+  userKits: Kit[];
+  editingKitSprite: { kitId: string; spriteId: string; spriteName: string } | null;
+  tabs: TabSnapshot[];
+  activeTabId: string;
+  tabCounter: number;
+};
+
+export type TabSnapshot = {
+  id: string;
+  name: string;
+  /** Serialized doc state. Stale while this tab is active — the live store is authoritative. */
+  doc: SerializedDoc;
+  zoom: number;
 };
 
 type Actions = {
@@ -87,6 +110,24 @@ type Actions = {
   commitFloating: () => void;
   cancelFloating: () => void;
   discardFloating: () => void;
+  loadKits: () => Promise<void>;
+  stampSprite: (
+    pixels: Uint8ClampedArray,
+    w: number,
+    h: number,
+    dropX: number,
+    dropY: number,
+  ) => void;
+  openKitSpriteForEdit: (kitId: string, spriteId: string) => void;
+  cancelKitEdit: () => void;
+  saveKitSpriteEdit: (targetKitId: string) => Promise<{ success: boolean; error?: string }>;
+  loadUserKits: () => Promise<void>;
+  createUserKit: (name: string) => Kit;
+  resizeCanvas: (w: number, h: number) => void;
+  newTab: (w?: number, h?: number) => void;
+  closeTab: (id: string) => void;
+  switchTab: (id: string) => void;
+  renameTab: (id: string, name: string) => void;
 };
 
 export type SerializedDoc = {
@@ -118,6 +159,24 @@ function base64ToBuffer(b64: string): Uint8ClampedArray {
   return out;
 }
 
+function blankSerializedDoc(w: number, h: number): SerializedDoc {
+  const layerId = uid();
+  return {
+    version: 1,
+    width: w,
+    height: h,
+    layers: [{ id: layerId, name: "Layer 1", visible: true, locked: false, opacity: 1, rev: 0 }],
+    activeLayerId: layerId,
+    palette: PICO8.slice(),
+    activeColor: PICO8[7],
+    pixelData: {},
+  };
+}
+
+function fitZoom(w: number, h: number): number {
+  return Math.max(2, Math.min(24, Math.floor(480 / Math.max(w, h))));
+}
+
 function makeLayer(name: string): Layer {
   return {
     id: uid(),
@@ -141,6 +200,17 @@ function defaultDoc(width: number, height: number) {
 }
 
 const initial = defaultDoc(32, 32);
+const initialTabId = uid();
+const initialTabDoc: SerializedDoc = {
+  version: 1,
+  width: initial.width,
+  height: initial.height,
+  layers: initial.layers,
+  activeLayerId: initial.activeLayerId,
+  palette: PICO8.slice(),
+  activeColor: PICO8[7],
+  pixelData: {},
+};
 
 export const useStore = create<State & Actions>((set, get) => ({
   width: initial.width,
@@ -163,6 +233,12 @@ export const useStore = create<State & Actions>((set, get) => ({
   clipboard: null,
   floating: null,
   docVersion: 0,
+  kits: null,
+  userKits: [],
+  editingKitSprite: null,
+  tabs: [{ id: initialTabId, name: "Untitled", doc: initialTabDoc, zoom: 12 }],
+  activeTabId: initialTabId,
+  tabCounter: 1,
 
   newDocument: (width, height) => {
     // wipe existing buffers
@@ -340,6 +416,103 @@ export const useStore = create<State & Actions>((set, get) => ({
     });
   },
 
+  resizeCanvas: (w, h) => {
+    const state = get();
+    w = Math.max(1, Math.min(512, Math.round(w)));
+    h = Math.max(1, Math.min(512, Math.round(h)));
+    if (w === state.width && h === state.height) return;
+    for (const layer of state.layers) {
+      const oldBuf = getLayerBuffer(layer.id);
+      if (!oldBuf) continue;
+      const newBuf = createPixelBuffer(w, h);
+      const copyW = Math.min(state.width, w);
+      const copyH = Math.min(state.height, h);
+      for (let y = 0; y < copyH; y++) {
+        const srcRow = y * state.width;
+        const dstRow = y * w;
+        for (let x = 0; x < copyW; x++) {
+          const srcI = (srcRow + x) * 4;
+          const dstI = (dstRow + x) * 4;
+          newBuf[dstI] = oldBuf[srcI];
+          newBuf[dstI + 1] = oldBuf[srcI + 1];
+          newBuf[dstI + 2] = oldBuf[srcI + 2];
+          newBuf[dstI + 3] = oldBuf[srcI + 3];
+        }
+      }
+      setLayerBuffer(layer.id, newBuf);
+    }
+    set({
+      width: w,
+      height: h,
+      layers: state.layers.map((l) => ({ ...l, rev: l.rev + 1 })),
+      history: [],
+      redoStack: [],
+      selection: null,
+      floating: null,
+      zoom: fitZoom(w, h),
+      docVersion: state.docVersion + 1,
+    });
+  },
+
+  newTab: (w = 32, h = 32) => {
+    const state = get();
+    const counter = state.tabCounter + 1;
+    const snapshotted = state.tabs.map((t) =>
+      t.id === state.activeTabId
+        ? { ...t, doc: state.serialize(), zoom: state.zoom }
+        : t,
+    );
+    const newId = uid();
+    const blank = blankSerializedDoc(w, h);
+    state.loadDocument(blank);
+    set({
+      tabs: [
+        ...snapshotted,
+        { id: newId, name: `Untitled ${counter}`, doc: blank, zoom: fitZoom(w, h) },
+      ],
+      activeTabId: newId,
+      tabCounter: counter,
+      zoom: fitZoom(w, h),
+    });
+  },
+
+  closeTab: (id) => {
+    const state = get();
+    if (state.tabs.length <= 1) return;
+    const idx = state.tabs.findIndex((t) => t.id === id);
+    if (idx < 0) return;
+    if (id === state.activeTabId) {
+      const neighborIdx = idx > 0 ? idx - 1 : idx + 1;
+      const neighbor = state.tabs[neighborIdx];
+      state.loadDocument(neighbor.doc);
+      set({
+        tabs: state.tabs.filter((t) => t.id !== id),
+        activeTabId: neighbor.id,
+        zoom: neighbor.zoom,
+      });
+    } else {
+      set({ tabs: state.tabs.filter((t) => t.id !== id) });
+    }
+  },
+
+  switchTab: (id) => {
+    const state = get();
+    if (id === state.activeTabId) return;
+    const target = state.tabs.find((t) => t.id === id);
+    if (!target) return;
+    const snapshotted = state.tabs.map((t) =>
+      t.id === state.activeTabId
+        ? { ...t, doc: state.serialize(), zoom: state.zoom }
+        : t,
+    );
+    state.loadDocument(target.doc);
+    set({ tabs: snapshotted, activeTabId: id, zoom: target.zoom });
+  },
+
+  renameTab: (id, name) => {
+    set({ tabs: get().tabs.map((t) => (t.id === id ? { ...t, name } : t)) });
+  },
+
   serialize: () => {
     const s = get();
     const pixelData: Record<string, string> = {};
@@ -499,6 +672,167 @@ export const useStore = create<State & Actions>((set, get) => ({
 
   discardFloating: () => {
     set({ floating: null });
+  },
+
+  loadKits: async () => {
+    if (get().kits) return;
+    const { loadAllKits } = await import("./kits");
+    const kits = await loadAllKits();
+    set({ kits });
+  },
+
+  openKitSpriteForEdit: (kitId, spriteId) => {
+    const state = get();
+    const all = [...(state.kits || []), ...state.userKits];
+    const sprite = findSprite(all, kitId, spriteId);
+    if (!sprite) return;
+    // Snapshot the current tab before swapping in the new doc
+    const snapshotted = state.tabs.map((t) =>
+      t.id === state.activeTabId
+        ? { ...t, doc: state.serialize(), zoom: state.zoom }
+        : t,
+    );
+    // Wipe current buffers; install the sprite as a single layer in a fresh tab
+    for (const l of state.layers) deleteLayerBuffer(l.id);
+    const pixels = decodeSprite(sprite);
+    const layer = makeLayer("Edit");
+    const buf = createPixelBuffer(sprite.w, sprite.h);
+    buf.set(pixels);
+    setLayerBuffer(layer.id, buf);
+    const newTabId = uid();
+    const newDoc: SerializedDoc = {
+      version: 1,
+      width: sprite.w,
+      height: sprite.h,
+      layers: [layer],
+      activeLayerId: layer.id,
+      palette: PICO8.slice(),
+      activeColor: PICO8[7],
+      pixelData: {},
+    };
+    const newZoom = Math.max(8, Math.min(32, Math.floor(480 / Math.max(sprite.w, sprite.h))));
+    set({
+      width: sprite.w,
+      height: sprite.h,
+      layers: [layer],
+      activeLayerId: layer.id,
+      palette: newDoc.palette,
+      activeColor: newDoc.activeColor,
+      history: [],
+      redoStack: [],
+      selection: null,
+      floating: null,
+      editingKitSprite: { kitId, spriteId, spriteName: sprite.name },
+      tabs: [
+        ...snapshotted,
+        { id: newTabId, name: sprite.name, doc: newDoc, zoom: newZoom },
+      ],
+      activeTabId: newTabId,
+      tabCounter: state.tabCounter + 1,
+      zoom: newZoom,
+      docVersion: state.docVersion + 1,
+    });
+  },
+
+  cancelKitEdit: () => {
+    set({ editingKitSprite: null });
+  },
+
+  loadUserKits: async () => {
+    const userKits = await loadUserKitsFromStorage();
+    set({ userKits });
+  },
+
+  createUserKit: (name) => {
+    const kit = makeUserKit(name);
+    const next = [...get().userKits, kit];
+    set({ userKits: next });
+    // fire-and-forget persistence
+    saveUserKitsToStorage(next).catch((e) => console.error("Failed to persist user kits:", e));
+    return kit;
+  },
+
+  saveKitSpriteEdit: async (targetKitId) => {
+    const state = get();
+    const editing = state.editingKitSprite;
+    if (!editing) return { success: false, error: "Not editing a kit sprite" };
+    const buf = getLayerBuffer(state.activeLayerId);
+    if (!buf) return { success: false, error: "No active layer buffer" };
+    const { palette, rows } = encodePixelsToKitFormat(buf, state.width, state.height);
+
+    if (isUserKit(targetKitId)) {
+      const userKits = get().userKits.slice();
+      const kit = userKits.find((k) => k.id === targetKitId);
+      if (!kit) return { success: false, error: "User kit not found" };
+      const sprite: KitSprite = {
+        id: editing.spriteId,
+        name: editing.spriteName,
+        w: state.width,
+        h: state.height,
+        palette,
+        rows,
+      };
+      upsertSpriteInUserKit(kit, sprite);
+      try {
+        await saveUserKitsToStorage(userKits);
+      } catch (e) {
+        return { success: false, error: e instanceof Error ? e.message : String(e) };
+      }
+      set({ userKits });
+      return { success: true };
+    }
+
+    // Stock kit save (admin-only once auth lands; for now write to disk in dev)
+    try {
+      const res = await fetch("/api/kits/save", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          kitId: targetKitId,
+          spriteId: editing.spriteId,
+          w: state.width,
+          h: state.height,
+          palette,
+          rows,
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        return { success: false, error: err.error || res.statusText };
+      }
+      set({ kits: null });
+      await get().loadKits();
+      return { success: true };
+    } catch (e) {
+      return { success: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  },
+
+  stampSprite: (pixels, w, h, dropX, dropY) => {
+    const s = get();
+    if (s.floating) get().commitFloating();
+    const origX = Math.floor(dropX - w / 2);
+    const origY = Math.floor(dropY - h / 2);
+    set({
+      selection: null,
+      prevTool: get().tool,
+      tool: "select",
+      floating: {
+        pixels: new Uint8ClampedArray(pixels),
+        w,
+        h,
+        origX,
+        origY,
+        origLayerId: get().activeLayerId,
+        transform: {
+          cx: origX + w / 2,
+          cy: origY + h / 2,
+          scaleX: 1,
+          scaleY: 1,
+          rotation: 0,
+        },
+      },
+    });
   },
 
   // ---- legacy selection-based ops (retained for keyboard shortcuts) ----

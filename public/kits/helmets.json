@@ -1,0 +1,822 @@
+{
+  "id": "helmets",
+  "name": "Helmets",
+  "version": 1,
+  "format": "indexed-palette-v1",
+  "categories": {
+    "48px": [
+      {
+        "id": "viking-48",
+        "name": "Viking Helmet",
+        "w": 48,
+        "h": 48,
+        "palette": {
+          ".": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "B": [
+            70,
+            45,
+            25,
+            255
+          ],
+          "b": [
+            120,
+            85,
+            50,
+            255
+          ],
+          "s": [
+            95,
+            95,
+            110,
+            255
+          ],
+          "H": [
+            240,
+            215,
+            165,
+            255
+          ],
+          "h": [
+            185,
+            150,
+            100,
+            255
+          ],
+          "m": [
+            150,
+            150,
+            160,
+            255
+          ],
+          "e": [
+            70,
+            70,
+            85,
+            255
+          ],
+          "M": [
+            200,
+            200,
+            205,
+            255
+          ],
+          "W": [
+            240,
+            240,
+            240,
+            255
+          ],
+          "S": [
+            55,
+            55,
+            70,
+            255
+          ],
+          "K": [
+            22,
+            22,
+            28,
+            255
+          ],
+          "R": [
+            40,
+            35,
+            38,
+            255
+          ],
+          "F": [
+            125,
+            95,
+            70,
+            255
+          ],
+          "f": [
+            80,
+            55,
+            40,
+            255
+          ]
+        },
+        "rows": [
+          "................................................",
+          "................................................",
+          "................................................",
+          "................................................",
+          "................................................",
+          ".B............................................B.",
+          "BBB..........................................BBB",
+          ".Bbb...............ssssssssss...............bbB.",
+          ".Hhhbb...........ssmmmmmmmmmmss...........bbhhH.",
+          "..Hhhbb........ssmmmmmmsesmmmmmss........bbhhH..",
+          "...Hhhbb......ssmmmmmmmsesmmmmmmss......bbhhH...",
+          "....Hhhbb....ssmmmMMMMMsesmmmmmssss....bbhhH....",
+          ".....HHhbbb..smmmMMMMMMsesmmmmmssss..bbbhHH.....",
+          ".....HHHhhbbsmmmMMWWWWMsesmmmmmmssssbbhhHHH.....",
+          "......HHHhhbsmmMMWWWWWWsesMmmmmmssssbhhHHH......",
+          ".......HHHhsmmmMMMWWWWMsesMmmmmmmsssshHHH.......",
+          "........HHHsmmmMMMMMMMMsesMmmmmmmssssHHH........",
+          ".........HHsmmmmMMMMMMMsesmmmmmmmssssHH.........",
+          "..........HsmmmmmMMMMMMsesmmmmmmmssssH..........",
+          "..........bsmmmmmmMMMMMsesmmmmmmmssssb..........",
+          "...........smmmmmmmmmmmsesmmmmmmmssss...........",
+          "...........smmmmmmmmmmmsesmmmmmmmssss...........",
+          ".......SSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS.......",
+          ".......ssssssssssssssSssssSssssssssssssss.......",
+          ".......SSSeSSSeSSSeSSSsmmsSSSSeSSSeSSSeSS.......",
+          ".......SSSSSSSSSSSSSSSsmmsSSSSSSSSSSSSSSS.......",
+          ".......KKKKKKKKKKKKKKSsmmsSKKKKKKKKKKKKKK.......",
+          "........SSSSSSSSSSSSSSsmmsSmSSSSSSSSSSSSS.......",
+          "........SssssssKKKKKmSsmmsSmKKKKKsssssssS.......",
+          "........SsmmmmmKKKKKsSsmmsSsKKKKKmmmmmmsS.......",
+          ".........SmmRmmmRmsS.SsmmsS.SsmRmmmRmmms........",
+          ".........SsmmmmmmmsS.SsmmsS.SsmmmmmmmmsS........",
+          ".........SsmmmmmmmsS.SsmmsS.SsmmmmmmmmsS........",
+          ".........SssmmmmmmsS.SsmmsS.SsmmmmmmmssS........",
+          ".........SSsRmmmRmsS.SsmmsS.SssRmmmRmssS........",
+          ".........SSssssssssS.SsmmsS.SsssssssssSS........",
+          "..........SssssssssS.SsmmsS.SSssssssssS.........",
+          "..........SSSSSSSSSS.SsmmsS.SSSSSSSSSSS.........",
+          "......FFF.SSSSSSSSSS.SssssS..SSSSSSSSSSFFF......",
+          ".....FFFFF.S...S.....SSSSSS.....S...S.FFFFF.....",
+          "....FfffFFFS...S.......SS.......S...SFFFfffF....",
+          ".....fffFFS....S........S.......S....SFFfff.....",
+          ".....fffF.S....S................S....S.Ffff.....",
+          "..........S..........................S..........",
+          "................................................",
+          "................................................",
+          "................................................",
+          "................................................"
+        ]
+      },
+      {
+        "id": "space-hunter-48",
+        "name": "Space Hunter Helmet",
+        "w": 48,
+        "h": 48,
+        "palette": {
+          ".": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "S": [
+            55,
+            55,
+            70,
+            255
+          ],
+          "M": [
+            200,
+            200,
+            205,
+            255
+          ],
+          "W": [
+            240,
+            240,
+            240,
+            255
+          ],
+          "m": [
+            150,
+            150,
+            160,
+            255
+          ],
+          "Y": [
+            120,
+            75,
+            15,
+            255
+          ],
+          "g": [
+            205,
+            150,
+            35,
+            255
+          ],
+          "G": [
+            255,
+            210,
+            75,
+            255
+          ],
+          "s": [
+            95,
+            95,
+            110,
+            255
+          ]
+        },
+        "rows": [
+          "................................................",
+          "................................................",
+          "................................................",
+          "................................................",
+          "................................................",
+          "..................SSSSSSMMSSSS..................",
+          "................SSMMMMMWWWMMMMSS................",
+          "..............SSMMMMMMMWWWMMMMMMSS..............",
+          ".............SmMMMMMMMMWWmMMMMMMMmS.............",
+          "............SmMMMMMMMMMWWmMMMMMMMMmS............",
+          "...........SmMMWWWWWWWMWWmMMMMMMMMMmS...........",
+          "..........SmMMWWWWWWWWMWWmMMMMMMMMMMmS..........",
+          "..........SMMWWWWWWWWWMWWmMMMMMMMMMMMS..........",
+          ".........SmMMWWWWWWWWWMWWmMMMMMMMMMMMmS.........",
+          ".........SMMMWWWWWWWWWMWWmMMMMMMMMMMMMS.........",
+          "........SmMMMMWWWWWWWWMWWmMMMMMMMMMMMMmS........",
+          "........SmMMMMMWWWWWWWMWWmMMMMMMMMMMMMmS........",
+          "........SmMMMMMMMMMMMMMWWmMMMMMMMMMMMMmS........",
+          "........SmMMMMMMMMMMMMMWWmMMMMMMMMMMMMmS........",
+          "........SmMMMMMMMMMMMMMWWmMMMMMMMMMMMMmS........",
+          "........SmMMMMMMMMMMMMMWWmMMMMMMMMMMMMmS........",
+          "........SmmMMMMMMMMMMMMWWmMMMMMMMMMMMmmS........",
+          "........YYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYY........",
+          "........YgGGGGGGGGGGGGGGGGGGGGGGGGGGGGgY........",
+          "......SSSSSSSSSSSSSSGGGGGGGGGSSSSSSSSSSSSSS.....",
+          "......SsssssssssssssgggggggggsssssssssssssS.....",
+          ".......smmmmmmmmmmmmgggggggggmmmmmmmmmmmms......",
+          ".......SsmmmmmmmmmmmYYYYYYYYYmmmmmmmmmmmmS......",
+          ".......SsmmMmmmmmmmmYgGGGGgYMmmmmmmmMmmmsS......",
+          "........SsmmMmmmmmmmYgGGGGgYmmmmmmmMmmmmS.......",
+          "........SsmmMmmmmmmmYgGGGGgYmmmmmmmMmmmsS.......",
+          ".........SsmmMmmmmmmsgGGGGgYSmmmmmMmmmmsS.......",
+          ".........SsmmMmmmmmmsgGGGGgYsmmmmmMmmmsS........",
+          ".........SssmmMmmmmmsgGGGGgYsmmmmMmmmmsS........",
+          "..........SsmmMmmmmmsgGGGGgYsmmmmMmmmsS.........",
+          "..........SssmmmmmmmsggggggYsmmmmmmmmsS.........",
+          "..........SSsmmmmmmmsggggggYsmmmmmmmsSS.........",
+          "...........SsssssssssYYggYYYsssssssssS..........",
+          "...........SSSSSSSSSS..gg...SSSSSSSSSS..........",
+          ".......................gg.......................",
+          "........................Y.......................",
+          "................................................",
+          "................................................",
+          "................................................",
+          "................................................",
+          "................................................",
+          "................................................",
+          "................................................"
+        ]
+      },
+      {
+        "id": "soldier-48",
+        "name": "Soldier Helmet",
+        "w": 48,
+        "h": 48,
+        "palette": {
+          ".": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "u": [
+            60,
+            75,
+            45,
+            255
+          ],
+          "o": [
+            100,
+            115,
+            75,
+            255
+          ],
+          "O": [
+            140,
+            155,
+            105,
+            255
+          ],
+          "M": [
+            200,
+            200,
+            205,
+            255
+          ],
+          "A": [
+            255,
+            165,
+            60,
+            255
+          ],
+          "a": [
+            185,
+            95,
+            30,
+            255
+          ],
+          "G": [
+            255,
+            210,
+            75,
+            255
+          ]
+        },
+        "rows": [
+          "................................................",
+          "................................................",
+          "................................................",
+          "................................................",
+          "................................................",
+          "..................uuuuuuuuuuuu..................",
+          "................uuoooooooooooouu................",
+          "..............uuooOOOOOOOOOOOOoouu..............",
+          ".............uooOOOOOOOOOOOOOOOOoou.............",
+          "............uoOOOOOOOOOOOOOOOOOOOOou............",
+          "...........uoOOOOOMMMMOOOOOOOOOOOOOou...........",
+          "..........uoOOOOOMMMMMMOOOOOOOOOOOOOou..........",
+          ".........uoOOOOOOOMMMMOOOOOOOOOOOOOOOou.........",
+          "........uuOOOOOOOOOOOOOOOOOOOOOOOOOOOOuu........",
+          "........uouOOOOuooooooooooooooooouOOOOuu........",
+          ".......uuOuOOOOuOOOOOOOOOOOOOOOOOuOOOOuuu.......",
+          ".......uouOOOOuoOOOOOOOOOOOOOOOOOouOOOOuu.......",
+          ".......uOuOOOOuOOOOOOOOOOOOOOOOOOOuOOOOuu.......",
+          "......uouOOOOAuOOOOOOOOOOOOOOOOOOOuAOOOOuu......",
+          "......uoOOOOOOuOOOOOOOOOOOOOOOOOOOuOOOOOou......",
+          "......uoOOOOOuOOOOOOOOOOOOOOOOOOOOOuOOOOou......",
+          "......uoOOOOOuOOOOOOOOOOOOOOOOOOOOOuOOOOou......",
+          "......uoOOuuuuuuuuuuuuuuuuuuuuuuuuuuuuuOou......",
+          "......uoOOuuaaaaaaaaaaaaaaaaaaaaaaaaauuOou......",
+          "......uooOuuAAAAAAAAAAAAAAAAAAAAAAAAAuuoou......",
+          "......uooOuauAGGGGGGGGGAAAAAAAAAAAAAuauoou......",
+          "......uoooOuuAAAAAAAAAAAAAAAAAAAAAAAuauoou......",
+          ".......uooOuauAAAAAAAAAAAAAAAAAAAAAuauoou.......",
+          ".......uooouauAAAAAAAAAAAAAAAAAAAAAuauoou.......",
+          ".......uuoouaaaaaaaaaaaaaaaaaaaaaaaaauouu.......",
+          "........uoouooooooooooooooooooooooooouou........",
+          "........uuoooOOOOOOOOOOOOOOOOOOOOOOOoouu........",
+          ".........uooooOOOOOOOOOOOOOOOOOOOOOOoou.........",
+          "..........uoooOOOOOOuuuuuuuuuOOOOOOoou..........",
+          "...........uoooOOOOOOOOOOOOOOOOOOOOou...........",
+          "............uooOOOOOuuuuuuuuOOOOOOou............",
+          ".............uooOOOOOOuOuOuOOOOOOOo.............",
+          "..............uoOOOOOOOOOOOOOOOOOo..............",
+          "...............ooOOOOOOOOOOOOOOOOo..............",
+          "................oOOOOOOOOOOOOOOOo...............",
+          "................ooooooooooooooooo...............",
+          "................................................",
+          "................................................",
+          "................................................",
+          "................................................",
+          "................................................",
+          "................................................",
+          "................................................"
+        ]
+      },
+      {
+        "id": "knight-48",
+        "name": "Knight Helmet",
+        "w": 48,
+        "h": 48,
+        "palette": {
+          ".": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "y": [
+            110,
+            105,
+            100,
+            255
+          ],
+          "p": [
+            190,
+            184,
+            175,
+            255
+          ],
+          "P": [
+            248,
+            244,
+            235,
+            255
+          ],
+          "S": [
+            55,
+            55,
+            70,
+            255
+          ],
+          "s": [
+            95,
+            95,
+            110,
+            255
+          ],
+          "m": [
+            150,
+            150,
+            160,
+            255
+          ],
+          "M": [
+            200,
+            200,
+            205,
+            255
+          ],
+          "W": [
+            240,
+            240,
+            240,
+            255
+          ],
+          "R": [
+            40,
+            35,
+            38,
+            255
+          ],
+          "K": [
+            22,
+            22,
+            28,
+            255
+          ]
+        },
+        "rows": [
+          "................................................",
+          "................................................",
+          "................................................",
+          ".....................yyyyyy.....................",
+          "....................yyyyyyy.....................",
+          "....................yypPPpyy....................",
+          "...................yyPPPPPpy....................",
+          "..................yyPSSssssSSSS.................",
+          ".................yySSmmmmmmmmmmSS...............",
+          "................yySSmmmmmmmmmmmmSS..............",
+          "................PSmmmmmmmmmmmmmmmmS.............",
+          "...............PSSmmmMMMMMMmmmmmmmSS............",
+          "..............PPSmmmMMWWMMMMmmmmmmmS............",
+          "............PPPSmmmMMWWWWMMMMmmmmmmmS...........",
+          "...........PPPPSmmmMMMWWMMMMMmmmmmmmS...........",
+          "..........PPPPSmmmmMMMMMMMMMMmmmmmmmmS..........",
+          "........PPPPPPSmmmmmMMMMMMMMmmmmmmmmmS..........",
+          ".......PPPPPppSmmmmmmMMMMMMmmmmmmmmmmS..........",
+          "......P.PPPpppSmmmmmmmmmmmmmmmmmmmmmmS..........",
+          ".......PPpppppSmmmmmmmmmmmmmmmmmmmmmmS..........",
+          "......PPpppppPSmmmmmmmmmmmmmmmmmmmmmmS..........",
+          ".....PPpppppPPSmmmmmmmmmmmmmmmmmmmmmmS..........",
+          "....P.pppppPPP.SSSSSSSSSSSSSSSSSSSSSSS..........",
+          ".....ppppppPP..RRssssssssssssssssssRR...........",
+          "....ppppppPP...SsmmmmmmmmmmmmmmmmmmmS...........",
+          "...ppppppPP....SsmSSSSSSSSSSSSSSSSSsS...........",
+          "...pppppPP.....SsmKKKKKKKKKKKKKKKKmsS...........",
+          "..yypppPP......RRmKKKKKKKKKKKKKKKKmRR...........",
+          ".yyyp..P.......SsmmmmmmmmmmmmmmmmmmsS...........",
+          "..y...P........SsmmmmmmmmmmmmmmmmmmsS...........",
+          ".....P.........SsmmmKmKmKmmmKmKmKmmsS...........",
+          "...............RRmmmKmKmKmmmKmKmKmmRR...........",
+          "...............SsmmmKmKmKmmmKmKmKmmsS...........",
+          "...............SsmmmmmmmmmmmmmmmmmmsS...........",
+          "...............SsmmmmmmmmmmmmmmmmmmsS...........",
+          "...............RRsmmmKmmmmmmmmmKmmmRR...........",
+          "...............SsssssssKsssssKssssssS...........",
+          "...............SSsssssssssssssssssssS...........",
+          "..............SSSSSSSSSSSSSSSSSSSSSSSSS.........",
+          "...............sssssssssssssssssssssss..........",
+          "................SsssssssssssssssssssS...........",
+          ".................SSsssssssssssssssSS............",
+          "..................SSSSSSSSSSSSSSSSS.............",
+          "................................................",
+          "................................................",
+          "................................................",
+          "................................................",
+          "................................................"
+        ]
+      }
+    ],
+    "16px": [
+      {
+        "id": "viking-16",
+        "name": "Viking Helmet",
+        "w": 16,
+        "h": 16,
+        "palette": {
+          ".": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "B": [
+            70,
+            45,
+            25,
+            255
+          ],
+          "b": [
+            120,
+            85,
+            50,
+            255
+          ],
+          "s": [
+            95,
+            95,
+            110,
+            255
+          ],
+          "m": [
+            150,
+            150,
+            160,
+            255
+          ],
+          "M": [
+            200,
+            200,
+            205,
+            255
+          ],
+          "S": [
+            55,
+            55,
+            70,
+            255
+          ],
+          "K": [
+            22,
+            22,
+            28,
+            255
+          ],
+          "F": [
+            125,
+            95,
+            70,
+            255
+          ],
+          "f": [
+            80,
+            55,
+            40,
+            255
+          ]
+        },
+        "rows": [
+          "................",
+          "................",
+          "B..............B",
+          "Bb............bB",
+          ".Bbb.smmmms.bbB.",
+          "..bbsmMMMMmsbb..",
+          "...smmMMMMmms...",
+          ".SSSSSSSSSSSSSS.",
+          ".SmmKKsSSsKKmmS.",
+          ".SsmsKsSSsKsmsS.",
+          ".SsmSs.SS.sSmsS.",
+          ".SsSS..SS..SSsS.",
+          "..SmS..SS..SmS..",
+          "..FmS..SS..SmF..",
+          ".FfmS..SS..SmfF.",
+          "................"
+        ]
+      },
+      {
+        "id": "space-hunter-16",
+        "name": "Space Hunter Helmet",
+        "w": 16,
+        "h": 16,
+        "palette": {
+          ".": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "S": [
+            55,
+            55,
+            70,
+            255
+          ],
+          "m": [
+            150,
+            150,
+            160,
+            255
+          ],
+          "M": [
+            200,
+            200,
+            205,
+            255
+          ],
+          "W": [
+            240,
+            240,
+            240,
+            255
+          ],
+          "Y": [
+            120,
+            75,
+            15,
+            255
+          ],
+          "G": [
+            255,
+            210,
+            75,
+            255
+          ],
+          "g": [
+            205,
+            150,
+            35,
+            255
+          ]
+        },
+        "rows": [
+          "................",
+          "....SSSSSSSS....",
+          "..SmMMMMMMMMmS..",
+          ".SmMMMWWWWMMMmS.",
+          ".SMMMMWWWWMMMMS.",
+          ".SMMMMMWWMMMMMS.",
+          ".SMMMMmWWmMMMMS.",
+          ".SYGGGGGGGGGGYS.",
+          ".SYGGGGGGGGGGYS.",
+          ".Smm.YGGGGY.mmS.",
+          ".SmS.YGGGGY.SmS.",
+          "..mS..YggY..Sm..",
+          "..SS..YggY..SS..",
+          "...S..YYYY..S...",
+          ".......YY.......",
+          "................"
+        ]
+      },
+      {
+        "id": "soldier-16",
+        "name": "Soldier Helmet",
+        "w": 16,
+        "h": 16,
+        "palette": {
+          ".": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "u": [
+            60,
+            75,
+            45,
+            255
+          ],
+          "O": [
+            140,
+            155,
+            105,
+            255
+          ],
+          "M": [
+            200,
+            200,
+            205,
+            255
+          ],
+          "m": [
+            150,
+            150,
+            160,
+            255
+          ],
+          "A": [
+            255,
+            165,
+            60,
+            255
+          ],
+          "a": [
+            185,
+            95,
+            30,
+            255
+          ],
+          "G": [
+            255,
+            210,
+            75,
+            255
+          ],
+          "o": [
+            100,
+            115,
+            75,
+            255
+          ]
+        },
+        "rows": [
+          "................",
+          "...uOOOOOOOOu...",
+          "..uOOOOOOOOOOu..",
+          ".uOOOOOMMOOOOOu.",
+          ".uOOOOMmmMOOOOu.",
+          ".uOOOOMMMMOOOOu.",
+          ".uOOOOOOOOOOOOu.",
+          ".uAAAAAAAAAAAAu.",
+          ".uaAAAAGGAAAAau.",
+          "..oaAAAAAAAAao..",
+          "..OOOOOOOOOOOO..",
+          ".oOOOOOOOOOOOOo.",
+          "..ooOOOOOOOOoo..",
+          "....uuOOOOuu....",
+          "................",
+          "................"
+        ]
+      },
+      {
+        "id": "knight-16",
+        "name": "Knight Helmet",
+        "w": 16,
+        "h": 16,
+        "palette": {
+          ".": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "P": [
+            248,
+            244,
+            235,
+            255
+          ],
+          "p": [
+            190,
+            184,
+            175,
+            255
+          ],
+          "s": [
+            95,
+            95,
+            110,
+            255
+          ],
+          "m": [
+            150,
+            150,
+            160,
+            255
+          ],
+          "M": [
+            200,
+            200,
+            205,
+            255
+          ],
+          "S": [
+            55,
+            55,
+            70,
+            255
+          ],
+          "K": [
+            22,
+            22,
+            28,
+            255
+          ],
+          "o": [
+            100,
+            115,
+            75,
+            255
+          ]
+        },
+        "rows": [
+          "................",
+          "PP..............",
+          "PPp.............",
+          "PpPp............",
+          "pPp.sssss.......",
+          "Ppp.smmmms......",
+          "Pp..smMMMMs.....",
+          "pp.SsmmMMmmsS...",
+          "p..SmKKKKKKmS...",
+          "...SmmsSSsmmS...",
+          "...SmsoSSosmS...",
+          "...SmsoSSosmS...",
+          "...SmmsSSsmmS...",
+          "....SSmmmmSS....",
+          ".....SSSSSS.....",
+          "................"
+        ]
+      }
+    ]
+  }
+}

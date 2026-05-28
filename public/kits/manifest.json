@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "kits": [
+    {
+      "id": "helmets",
+      "name": "Helmets",
+      "file": "helmets.json"
+    },
+    {
+      "id": "bodies",
+      "name": "Bodies",
+      "file": "bodies.json"
+    },
+    {
+      "id": "arms",
+      "name": "Arms",
+      "file": "arms.json"
+    },
+    {
+      "id": "legs",
+      "name": "Legs",
+      "file": "legs.json"
+    }
+  ]
+}

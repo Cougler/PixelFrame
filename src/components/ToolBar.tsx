@@ -1,4 +1,5 @@
 "use client";
+import { useState } from "react";
 import {
   Pencil,
   Eraser,
@@ -14,9 +15,11 @@ import {
   ZoomOut,
   BoxSelect,
   Wand2,
+  Package,
 } from "lucide-react";
 import { useStore } from "@/lib/store";
 import type { Tool } from "@/lib/types";
+import KitsPanel from "./KitsPanel";
 
 const tools: { id: Tool; icon: React.ComponentType<{ size?: number }>; label: string; key: string }[] = [
   { id: "select", icon: BoxSelect, label: "Select", key: "M" },
@@ -54,6 +57,10 @@ export default function ToolBar() {
 
   const showShape = tool === "rectangle" || tool === "ellipse";
   const showBrush = tool === "pencil" || tool === "eraser";
+  const [kitsOpen, setKitsOpen] = useState(false);
+
+  // 8px top padding, then N tool buttons at 40h + 2 gap = 42 each
+  const kitsAnchorTop = 8 + tools.length * 42;
 
   return (
     <div
@@ -101,6 +108,29 @@ export default function ToolBar() {
           </button>
         );
       })}
+
+      <button
+        onClick={() => setKitsOpen((v) => !v)}
+        title="Kits — drag pre-made sprites onto the canvas"
+        style={{
+          width: 40,
+          height: 40,
+          borderRadius: 6,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          background: kitsOpen ? "var(--active)" : "transparent",
+          color: kitsOpen ? "var(--accent)" : "var(--text-dim)",
+        }}
+        onMouseEnter={(e) => {
+          if (!kitsOpen) e.currentTarget.style.background = "var(--hover)";
+        }}
+        onMouseLeave={(e) => {
+          if (!kitsOpen) e.currentTarget.style.background = "transparent";
+        }}
+      >
+        <Package size={18} />
+      </button>
 
       <div style={{ flex: 1 }} />
 
@@ -218,6 +248,7 @@ export default function ToolBar() {
       </button>
 
       {showBrush && <BrushPopover toolIndex={tools.findIndex((t) => t.id === tool)} />}
+      {kitsOpen && <KitsPanel anchorTop={kitsAnchorTop} />}
     </div>
   );
 }
