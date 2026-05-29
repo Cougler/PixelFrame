@@ -59,6 +59,10 @@ export default function Canvas() {
   // the centered pan offset on every render.
   const [containerSize, setContainerSize] = useState({ w: 0, h: 0 });
 
+  // Latest render, accessed via ref from the ResizeObserver so its callback
+  // doesn't paint through a stale closure.
+  const renderRef = useRef<() => void>(() => {});
+
   // transform interaction state
   const transformActive = useRef<{
     handle: HandleId;
@@ -104,11 +108,10 @@ export default function Canvas() {
         c.style.height = `${r.height}px`;
       });
       setContainerSize({ w: r.width, h: r.height });
-      requestAnimationFrame(render);
+      requestAnimationFrame(() => renderRef.current());
     });
     ro.observe(container);
     return () => ro.disconnect();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Keep layer offscreens in sync with rev
@@ -219,6 +222,7 @@ export default function Canvas() {
   }, [layers, width, height, zoom, panX, panY, showGrid, syncLayerCanvas, floating, ensureFloatingCanvas]);
 
   useEffect(() => {
+    renderRef.current = render;
     requestAnimationFrame(render);
   }, [render]);
 
@@ -502,6 +506,31 @@ export default function Canvas() {
   };
 
   const onPointerMove = (e: React.PointerEvent) => {
+    // Update cursor to reflect what's under (or being dragged by) the pointer.
+    // Written directly to the DOM so hover updates don't trigger React renders.
+    const overlayEl = overlayRef.current;
+    if (overlayEl) {
+      let cursor = "crosshair";
+      if (transformActive.current) {
+        cursor = HANDLE_CURSOR[transformActive.current.handle];
+      } else if (floating && tool === "select") {
+        const main = canvasRef.current;
+        if (main) {
+          const rect = main.getBoundingClientRect();
+          const handle = hitTestHandle(
+            floating,
+            panX,
+            panY,
+            zoom,
+            e.clientX - rect.left,
+            e.clientY - rect.top,
+          );
+          if (handle) cursor = HANDLE_CURSOR[handle];
+        }
+      }
+      overlayEl.style.cursor = cursor;
+    }
+
     // floating transform interaction
     if (transformActive.current) {
       const f = useStore.getState().floating;
@@ -693,7 +722,7 @@ export default function Canvas() {
         style={{
           position: "absolute",
           inset: 0,
-          cursor: getCursor(tool),
+          cursor: "crosshair",
           touchAction: "none",
         }}
       />
@@ -702,10 +731,18 @@ export default function Canvas() {
   );
 }
 
-function getCursor(tool: Tool): string {
-  if (tool === "select") return "crosshair";
-  return "crosshair";
-}
+const HANDLE_CURSOR: Record<HandleId, string> = {
+  tl: "nwse-resize",
+  br: "nwse-resize",
+  tr: "nesw-resize",
+  bl: "nesw-resize",
+  t: "ns-resize",
+  b: "ns-resize",
+  l: "ew-resize",
+  r: "ew-resize",
+  rotate: "grab",
+  move: "move",
+};
 
 function drawFloatingFrame(
   ctx: CanvasRenderingContext2D,
