@@ -267,6 +267,13 @@ export default function Canvas() {
         const offMin = -Math.floor(half);
         const bx = cursorPixel.x + offMin;
         const by = cursorPixel.y + offMin;
+        // cursorPixel may be out of bounds when the pointer is near or past an
+        // edge — clip the brush box to the canvas grid so only the cells that
+        // actually overlap the canvas are highlighted.
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(panX, panY, width * zoom, height * zoom);
+        ctx.clip();
         ctx.fillStyle = "rgba(255,255,255,0.3)";
         ctx.fillRect(panX + bx * zoom, panY + by * zoom, zoom * sz, zoom * sz);
         ctx.strokeStyle = "rgba(0,0,0,0.5)";
@@ -276,6 +283,7 @@ export default function Canvas() {
           zoom * sz - 1,
           zoom * sz - 1,
         );
+        ctx.restore();
       }
 
       if (preview) {
@@ -564,7 +572,10 @@ export default function Canvas() {
     }
 
     const p = eventToPixel(e);
-    useStore.getState().setCursorPixel(inBounds(p) ? p : null);
+    // Store the unclamped position even when out of bounds so the brush box
+    // stays visible near edges (the overlay clips it to the grid; paintBrush
+    // bounds-checks per cell). onPointerLeave still clears it on real exit.
+    useStore.getState().setCursorPixel(p);
 
     if (isSelecting.current && selectStart.current) {
       selectEnd.current = {
