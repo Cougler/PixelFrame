@@ -13,6 +13,7 @@ export default function TopBar() {
   const width = useStore((s) => s.width);
   const height = useStore((s) => s.height);
   const layers = useStore((s) => s.layers);
+  const activeFrameId = useStore((s) => s.activeFrameId);
   const newDocument = useStore((s) => s.newDocument);
 
   const [showNew, setShowNew] = useState(false);
@@ -288,7 +289,7 @@ export default function TopBar() {
             </button>
             <button
               onClick={() => {
-                exportPng(layers, width, height, scale);
+                exportPng(layers, width, height, activeFrameId, scale);
                 setShowExport(false);
               }}
               style={{

@@ -1,30 +1,39 @@
 import type { RGBA } from "./types";
 
+// Pixel buffers are stored per cel, keyed by celKey(layerId, frameId) — see the
+// "Cels" section below. Every buffer belongs to a (layer, frame) intersection.
 const pixelStore = new Map<string, Uint8ClampedArray>();
 
 export function createPixelBuffer(width: number, height: number): Uint8ClampedArray {
   return new Uint8ClampedArray(width * height * 4);
 }
 
-export function setLayerBuffer(id: string, pixels: Uint8ClampedArray) {
-  pixelStore.set(id, pixels);
-}
-
-export function getLayerBuffer(id: string): Uint8ClampedArray | undefined {
-  return pixelStore.get(id);
-}
-
-export function deleteLayerBuffer(id: string) {
-  pixelStore.delete(id);
-}
-
 export function cloneBuffer(buf: Uint8ClampedArray): Uint8ClampedArray {
   return new Uint8ClampedArray(buf);
 }
 
-export function clearBuffer(id: string) {
-  const buf = pixelStore.get(id);
-  if (buf) buf.fill(0);
+// ---- Cels ---------------------------------------------------------------
+// A "cel" is the pixel buffer at a (layer, frame) intersection. Buffers are
+// stored in the same module-level map, keyed by `${layerId}::${frameId}`, so
+// every frame's cels coexist in memory and a frame switch is just a key change.
+
+export function celKey(layerId: string, frameId: string): string {
+  return `${layerId}::${frameId}`;
+}
+
+export function getCelBuffer(
+  layerId: string,
+  frameId: string,
+): Uint8ClampedArray | undefined {
+  return pixelStore.get(celKey(layerId, frameId));
+}
+
+export function setCelBuffer(layerId: string, frameId: string, pixels: Uint8ClampedArray) {
+  pixelStore.set(celKey(layerId, frameId), pixels);
+}
+
+export function deleteCelBuffer(layerId: string, frameId: string) {
+  pixelStore.delete(celKey(layerId, frameId));
 }
 
 export function setPixel(

@@ -62,9 +62,18 @@ export type HandleId =
 
 export type ShapeMode = "stroke" | "fill";
 
+// A frame is a column in the timeline. Layers span all frames; the pixels for
+// a given (layer, frame) live in a cel buffer (see pixels.ts celKey).
+export type Frame = {
+  id: string;
+  name: string;
+  duration: number; // milliseconds this frame is shown during playback
+};
+
 export type HistoryEntry = {
   type: "pixels";
   layerId: string;
+  frameId: string;
   before: Uint8ClampedArray;
   after: Uint8ClampedArray;
 };

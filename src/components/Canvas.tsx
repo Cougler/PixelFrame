@@ -8,7 +8,7 @@ import {
   fillEllipse,
   fillRect,
   floodFill,
-  getLayerBuffer,
+  getCelBuffer,
   getPixel,
   paintBrush,
   setPixel,
@@ -75,6 +75,9 @@ export default function Canvas() {
     height,
     layers,
     activeLayerId,
+    activeFrameId,
+    playing,
+    previewFrameId,
     activeColor,
     tool,
     shapeMode,
@@ -86,6 +89,12 @@ export default function Canvas() {
     floating,
     brushSize,
   } = useStore();
+
+  // The frame shown on canvas: the playback preview while playing, else the
+  // frame being edited. Editing always targets activeFrameId (see celOf).
+  const displayFrameId = playing && previewFrameId ? previewFrameId : activeFrameId;
+  // Active-frame cel for the given layer — the edit target for tools.
+  const celOf = (layerId: string) => getCelBuffer(layerId, activeFrameId);
 
   // Pan is always derived: the artwork is centered in the container.
   const panX = Math.floor((containerSize.w - width * zoom) / 2);
@@ -114,17 +123,19 @@ export default function Canvas() {
     return () => ro.disconnect();
   }, []);
 
-  // Keep layer offscreens in sync with rev
+  // Keep the offscreen canvas for a (layer, frame) cel in sync with its buffer.
+  // Cached by celKey so every frame's cels have their own offscreen.
   const syncLayerCanvas = useCallback(
-    (layerId: string) => {
-      const buf = getLayerBuffer(layerId);
+    (layerId: string, frameId: string) => {
+      const key = `${layerId}::${frameId}`;
+      const buf = getCelBuffer(layerId, frameId);
       if (!buf) return;
-      let c = layerCanvases.current.get(layerId);
+      let c = layerCanvases.current.get(key);
       if (!c || c.width !== width || c.height !== height) {
         c = document.createElement("canvas");
         c.width = width;
         c.height = height;
-        layerCanvases.current.set(layerId, c);
+        layerCanvases.current.set(key, c);
       }
       const ctx = c.getContext("2d")!;
       const copy = new Uint8ClampedArray(buf);
@@ -162,16 +173,17 @@ export default function Canvas() {
     // checker bg behind artwork
     drawChecker(ctx, panX, panY, width * zoom, height * zoom);
 
-    // draw layers
+    // draw layers (cels of the frame currently displayed)
     for (const layer of layers) {
       if (!layer.visible) continue;
-      const cached = layerCanvases.current.get(layer.id);
-      const cachedRev = layerRevs.current.get(layer.id);
+      const key = `${layer.id}::${displayFrameId}`;
+      const cached = layerCanvases.current.get(key);
+      const cachedRev = layerRevs.current.get(key);
       if (!cached || cachedRev !== layer.rev) {
-        syncLayerCanvas(layer.id);
-        layerRevs.current.set(layer.id, layer.rev);
+        syncLayerCanvas(layer.id, displayFrameId);
+        layerRevs.current.set(key, layer.rev);
       }
-      const c = layerCanvases.current.get(layer.id);
+      const c = layerCanvases.current.get(key);
       if (!c) continue;
       ctx.globalAlpha = layer.opacity;
       ctx.drawImage(c, panX, panY, width * zoom, height * zoom);
@@ -219,7 +231,7 @@ export default function Canvas() {
       width * zoom + 1,
       height * zoom + 1,
     );
-  }, [layers, width, height, zoom, panX, panY, showGrid, syncLayerCanvas, floating, ensureFloatingCanvas]);
+  }, [layers, width, height, zoom, panX, panY, showGrid, syncLayerCanvas, floating, ensureFloatingCanvas, displayFrameId]);
 
   useEffect(() => {
     renderRef.current = render;
@@ -422,7 +434,7 @@ export default function Canvas() {
     const layer = layers.find((l) => l.id === activeLayerId);
     if (!layer || layer.locked || !layer.visible) return;
 
-    const buf = getLayerBuffer(activeLayerId);
+    const buf = celOf(activeLayerId);
     if (!buf) return;
 
     if (tool === "eyedropper") {
@@ -431,7 +443,7 @@ export default function Canvas() {
       for (let i = layers.length - 1; i >= 0; i--) {
         const l = layers[i];
         if (!l.visible) continue;
-        const lb = getLayerBuffer(l.id);
+        const lb = celOf(l.id);
         if (!lb) continue;
         const px = getPixel(lb, width, height, p.x, p.y);
         if (px && px[3] > 0) {
@@ -472,7 +484,7 @@ export default function Canvas() {
         // wipe across all visible layers (one history entry per affected layer)
         for (const l of layers) {
           if (!l.visible || l.locked) continue;
-          const b = getLayerBuffer(l.id);
+          const b = celOf(l.id);
           if (!b) continue;
           const before = cloneBuffer(b);
           if (eraseByColor(b, target)) {
@@ -588,7 +600,7 @@ export default function Canvas() {
 
     if (isDrawing.current) {
       if (tool === "pencil" || tool === "eraser") {
-        const buf = getLayerBuffer(activeLayerId);
+        const buf = celOf(activeLayerId);
         if (!buf) return;
         const isEraseStroke = tool === "eraser" || strokeIsErase.current;
         const rgba: RGBA = isEraseStroke ? [0, 0, 0, 0] : hexToRgba(activeColor);
@@ -641,7 +653,7 @@ export default function Canvas() {
 
     if (!isDrawing.current) return;
 
-    const buf = getLayerBuffer(activeLayerId);
+    const buf = celOf(activeLayerId);
     const before = strokeBefore.current;
     if (!buf || !before) {
       isDrawing.current = false;
