@@ -1,7 +1,7 @@
 "use client";
 import { useRef, useState } from "react";
 import { useStore } from "@/lib/store";
-import { exportPng } from "@/lib/export";
+import { exportPng, exportGif, exportSpriteSheet, exportPngSequence } from "@/lib/export";
 import { importPngFile, readImageDimensions } from "@/lib/import";
 import { Download, FilePlus, FileBox, Upload } from "lucide-react";
 import CanvasSizePicker from "./CanvasSizePicker";
@@ -13,11 +13,14 @@ export default function TopBar() {
   const width = useStore((s) => s.width);
   const height = useStore((s) => s.height);
   const layers = useStore((s) => s.layers);
+  const frames = useStore((s) => s.frames);
   const activeFrameId = useStore((s) => s.activeFrameId);
   const newDocument = useStore((s) => s.newDocument);
 
   const [showNew, setShowNew] = useState(false);
   const [showExport, setShowExport] = useState(false);
+  const [exportFormat, setExportFormat] = useState<"png" | "gif" | "sheet" | "sequence">("png");
+  const [exportLoop, setExportLoop] = useState(true);
   const [w, setW] = useState(32);
   const [h, setH] = useState(32);
   const [scale, setScale] = useState(1);
@@ -186,7 +189,7 @@ export default function TopBar() {
           fontWeight: 500,
         }}
       >
-        <Download size={14} /> Export PNG
+        <Download size={14} /> Export
       </button>
 
       {showNew && (
@@ -257,11 +260,47 @@ export default function TopBar() {
 
       {showExport && (
         <Modal onClose={() => setShowExport(false)}>
-          <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 12 }}>Export PNG</div>
-          <div style={{ marginBottom: 12, fontSize: 12, color: "var(--text-dim)" }}>
-            Output: {width * scale}×{height * scale}
+          <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 12 }}>Export</div>
+
+          {/* format picker */}
+          <div style={{ display: "flex", gap: 6, marginBottom: 12 }}>
+            {([
+              ["png", "PNG"],
+              ["gif", "GIF"],
+              ["sheet", "Sheet"],
+              ["sequence", "Frames"],
+            ] as const).map(([fmt, label]) => (
+              <button
+                key={fmt}
+                onClick={() => setExportFormat(fmt)}
+                style={{
+                  flex: 1,
+                  padding: "8px 4px",
+                  background: exportFormat === fmt ? "var(--active)" : "var(--panel-2)",
+                  border: exportFormat === fmt ? "1px solid var(--accent)" : "1px solid var(--border-2)",
+                  borderRadius: 4,
+                  color: exportFormat === fmt ? "var(--accent)" : "var(--text-dim)",
+                  fontSize: 12,
+                }}
+              >
+                {label}
+              </button>
+            ))}
           </div>
-          <div style={{ display: "flex", gap: 6, marginBottom: 16 }}>
+
+          <div style={{ marginBottom: 12, fontSize: 11, color: "var(--text-muted)" }}>
+            {exportFormat === "png"
+              ? `${width * scale}×${height * scale} · current frame`
+              : exportFormat === "gif"
+                ? `Animated GIF · ${frames.length} frame${frames.length === 1 ? "" : "s"} · ${width * scale}×${height * scale}`
+                : exportFormat === "sheet"
+                  ? `Sprite sheet + JSON · ${frames.length} frame${frames.length === 1 ? "" : "s"}`
+                  : `${frames.length} PNG file${frames.length === 1 ? "" : "s"} · ${width * scale}×${height * scale}`}
+          </div>
+
+          {/* scale */}
+          <div style={{ fontSize: 11, color: "var(--text-dim)", marginBottom: 4 }}>Scale</div>
+          <div style={{ display: "flex", gap: 6, marginBottom: 12 }}>
             {[1, 2, 4, 8].map((n) => (
               <button
                 key={n}
@@ -280,6 +319,29 @@ export default function TopBar() {
               </button>
             ))}
           </div>
+
+          {/* GIF loop */}
+          {exportFormat === "gif" && (
+            <label
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                marginBottom: 12,
+                fontSize: 12,
+                color: "var(--text-dim)",
+                cursor: "pointer",
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={exportLoop}
+                onChange={(e) => setExportLoop(e.target.checked)}
+              />
+              Loop forever
+            </label>
+          )}
+
           <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
             <button
               onClick={() => setShowExport(false)}
@@ -289,7 +351,12 @@ export default function TopBar() {
             </button>
             <button
               onClick={() => {
-                exportPng(layers, width, height, activeFrameId, scale);
+                if (exportFormat === "png") exportPng(layers, width, height, activeFrameId, scale);
+                else if (exportFormat === "gif")
+                  exportGif(layers, width, height, frames, { scale, loop: exportLoop });
+                else if (exportFormat === "sheet")
+                  exportSpriteSheet(layers, width, height, frames, { scale });
+                else exportPngSequence(layers, width, height, frames, scale);
                 setShowExport(false);
               }}
               style={{

@@ -10,6 +10,7 @@ import {
   Trash2,
   ChevronLeft,
   ChevronRight,
+  Ghost,
 } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { compositeToCanvas } from "@/lib/export";
@@ -77,6 +78,7 @@ export default function Timeline() {
   const previewFrameId = useStore((s) => s.previewFrameId);
   const playing = useStore((s) => s.playing);
   const loop = useStore((s) => s.loop);
+  const onion = useStore((s) => s.onion);
   const width = useStore((s) => s.width);
   const height = useStore((s) => s.height);
 
@@ -88,6 +90,7 @@ export default function Timeline() {
   const setFrameDuration = useStore((s) => s.setFrameDuration);
   const setActiveLayer = useStore((s) => s.setActiveLayer);
   const toggleLoop = useStore((s) => s.toggleLoop);
+  const toggleOnion = useStore((s) => s.toggleOnion);
   const play = useStore((s) => s.play);
   const pause = useStore((s) => s.pause);
   const stop = useStore((s) => s.stop);
@@ -148,6 +151,13 @@ export default function Timeline() {
         </IconButton>
         <IconButton title={loop ? "Looping" : "Not looping"} onClick={() => toggleLoop()} active={loop}>
           <Repeat size={13} />
+        </IconButton>
+        <IconButton
+          title={onion.enabled ? "Onion skin on" : "Onion skin off"}
+          onClick={() => toggleOnion()}
+          active={onion.enabled}
+        >
+          <Ghost size={14} />
         </IconButton>
         <span style={{ fontSize: 11, color: "var(--text-muted)", fontFamily: "ui-monospace, monospace" }}>
           frame {Math.max(0, frames.findIndex((f) => f.id === playheadId)) + 1}/{frames.length}

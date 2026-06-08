@@ -54,6 +54,8 @@ type State = {
   playing: boolean;
   /** Frame currently shown during playback (transient — never edited/persisted). */
   previewFrameId: string | null;
+  /** Onion skinning — a view setting, not part of the document. */
+  onion: OnionSettings;
   palette: string[];
   activeColor: string;
   paletteLocked: boolean;
@@ -76,6 +78,14 @@ type State = {
   tabs: TabSnapshot[];
   activeTabId: string;
   tabCounter: number;
+};
+
+export type OnionSettings = {
+  enabled: boolean;
+  prev: number; // how many previous frames to ghost
+  next: number; // how many following frames to ghost
+  opacity: number; // opacity of the nearest ghost (farther ones fade)
+  tint: boolean; // tint prev blue / next red
 };
 
 export type TabSnapshot = {
@@ -115,6 +125,8 @@ type Actions = {
   setActiveFrame: (id: string) => void;
   setFrameDuration: (id: string, duration: number) => void;
   toggleLoop: () => void;
+  toggleOnion: () => void;
+  setOnion: (partial: Partial<OnionSettings>) => void;
   play: () => void;
   pause: () => void;
   stop: () => void;
@@ -275,6 +287,7 @@ export const useStore = create<State & Actions>((set, get) => {
   loop: true,
   playing: false,
   previewFrameId: null,
+  onion: { enabled: false, prev: 1, next: 1, opacity: 0.35, tint: true },
   palette: PICO8.slice(),
   activeColor: PICO8[7],
   paletteLocked: false,
@@ -474,6 +487,10 @@ export const useStore = create<State & Actions>((set, get) => {
   },
 
   toggleLoop: () => set({ loop: !get().loop }),
+
+  toggleOnion: () => set({ onion: { ...get().onion, enabled: !get().onion.enabled } }),
+
+  setOnion: (partial) => set({ onion: { ...get().onion, ...partial } }),
 
   play: () => {
     const st = get();
