@@ -27,7 +27,9 @@ export default function StatusBar() {
       <span>{tool}</span>
       <span>·</span>
       <span>
-        {cursor ? `${cursor.x}, ${cursor.y}` : "—"}
+        {cursor && cursor.x >= 0 && cursor.y >= 0 && cursor.x < width && cursor.y < height
+          ? `${cursor.x}, ${cursor.y}`
+          : "—"}
       </span>
       <span>·</span>
       <span>{Math.round(zoom * 100) / 100}x</span>
