@@ -4,6 +4,8 @@ import { useStore } from "@/lib/store";
 import { exportPng } from "@/lib/export";
 import { importPngFile, readImageDimensions } from "@/lib/import";
 import { Download, FilePlus, FileBox, Upload } from "lucide-react";
+import CanvasSizePicker from "./CanvasSizePicker";
+import { alertDialog, confirmDialog } from "@/lib/dialog";
 
 const SIZE_PRESETS = [16, 32, 48, 64, 96, 128, 256];
 
@@ -52,7 +54,7 @@ export default function TopBar() {
       setSmoothing(false);
       setLockAspect(true);
     } catch (err) {
-      alert(`Could not read image: ${(err as Error).message}`);
+      alertDialog({ title: "Couldn't read image", message: (err as Error).message });
     }
   };
 
@@ -71,12 +73,15 @@ export default function TopBar() {
         smoothing,
       });
       if (capped) {
-        alert(`Image was larger than 512px and was scaled to ${iw}×${ih}.`);
+        alertDialog({
+          title: "Image scaled",
+          message: `Image was larger than 512px and was scaled to ${iw}×${ih}.`,
+        });
       }
       setPendingFile(null);
       setPendingDims(null);
     } catch (err) {
-      alert(`Import failed: ${(err as Error).message}`);
+      alertDialog({ title: "Import failed", message: (err as Error).message });
     } finally {
       setImporting(false);
     }
@@ -115,9 +120,11 @@ export default function TopBar() {
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
         <FileBox size={16} color="var(--accent)" />
         <span style={{ fontWeight: 600, fontSize: 13 }}>PixelFrame</span>
-        <span style={{ color: "var(--text-muted)", fontSize: 11 }}>
-          {width}×{height}
-        </span>
+      </div>
+
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginLeft: 12 }}>
+        <span style={{ fontSize: 11, color: "var(--text-muted)" }}>Canvas size:</span>
+        <CanvasSizePicker />
       </div>
 
       <div style={{ flex: 1 }} />
@@ -217,8 +224,15 @@ export default function TopBar() {
               Cancel
             </button>
             <button
-              onClick={() => {
-                if (!confirm("Replace current document with a new blank canvas?")) {
+              onClick={async () => {
+                const ok = await confirmDialog({
+                  title: "Replace current document?",
+                  message:
+                    "This will replace the current canvas with a new blank one. Your existing pixels won't be saved unless you've exported them.",
+                  okLabel: "Replace",
+                  destructive: true,
+                });
+                if (!ok) {
                   setShowNew(false);
                   return;
                 }

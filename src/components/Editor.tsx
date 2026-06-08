@@ -1,13 +1,16 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { useStore } from "@/lib/store";
-import { loadDoc, saveDoc } from "@/lib/persist";
+import { loadDoc, loadTabs, saveTabs } from "@/lib/persist";
 import Canvas from "./Canvas";
 import ToolBar from "./ToolBar";
 import TopBar from "./TopBar";
 import LayersPanel from "./LayersPanel";
 import PalettePanel from "./PalettePanel";
 import StatusBar from "./StatusBar";
+import KitEditBanner from "./KitEditBanner";
+import TabBar from "./TabBar";
+import DialogHost from "./DialogHost";
 import type { Tool } from "@/lib/types";
 
 const KEY_TO_TOOL: Record<string, Tool> = {
@@ -26,31 +29,64 @@ export default function Editor() {
   const [hydrated, setHydrated] = useState(false);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Initial load from IndexedDB
+  // Initial load: prefer multi-tab snapshot; fall back to legacy single doc.
   useEffect(() => {
     let cancelled = false;
-    loadDoc().then((doc) => {
+    (async () => {
+      const saved = await loadTabs();
       if (cancelled) return;
-      if (doc) useStore.getState().loadDocument(doc);
+      if (saved) {
+        const target = saved.tabs.find((t) => t.id === saved.activeTabId) ?? saved.tabs[0];
+        useStore.getState().loadDocument(target.doc);
+        useStore.setState({
+          tabs: saved.tabs,
+          activeTabId: target.id,
+          tabCounter: Math.max(saved.tabs.length, 1),
+          zoom: target.zoom,
+        });
+      } else {
+        // Migrate legacy single-doc save into the first tab.
+        const legacy = await loadDoc();
+        if (legacy) {
+          useStore.getState().loadDocument(legacy);
+          const s = useStore.getState();
+          const first = s.tabs[0];
+          if (first) {
+            useStore.setState({
+              tabs: [{ ...first, doc: { ...legacy, pixelData: {} }, zoom: s.zoom }],
+            });
+          }
+        }
+      }
       setHydrated(true);
-    });
+    })();
     return () => {
       cancelled = true;
     };
   }, []);
 
-  // Autosave on layer rev / palette / size changes (debounced)
+  // Autosave: snapshot every tab (active one fresh from live state) and save.
   useEffect(() => {
     if (!hydrated) return;
     const unsub = useStore.subscribe((state, prev) => {
-      const sigA = state.layers.map((l) => `${l.id}:${l.rev}`).join("|") + `|${state.width}x${state.height}`;
-      const sigB = prev.layers.map((l) => `${l.id}:${l.rev}`).join("|") + `|${prev.width}x${prev.height}`;
+      const sigA =
+        state.layers.map((l) => `${l.id}:${l.rev}`).join("|") +
+        `|${state.width}x${state.height}|${state.activeTabId}|${state.tabs.length}|${state.tabs.map((t) => `${t.id}:${t.name}`).join(",")}`;
+      const sigB =
+        prev.layers.map((l) => `${l.id}:${l.rev}`).join("|") +
+        `|${prev.width}x${prev.height}|${prev.activeTabId}|${prev.tabs.length}|${prev.tabs.map((t) => `${t.id}:${t.name}`).join(",")}`;
       const palA = state.palette.join(",");
       const palB = prev.palette.join(",");
       if (sigA !== sigB || palA !== palB || state.activeColor !== prev.activeColor) {
         if (saveTimer.current) clearTimeout(saveTimer.current);
         saveTimer.current = setTimeout(() => {
-          saveDoc(useStore.getState().serialize());
+          const s = useStore.getState();
+          const tabs = s.tabs.map((t) =>
+            t.id === s.activeTabId
+              ? { ...t, doc: s.serialize(), zoom: s.zoom }
+              : t,
+          );
+          saveTabs(tabs, s.activeTabId);
         }, 600);
       }
     });
@@ -171,6 +207,8 @@ export default function Editor() {
   return (
     <div style={{ height: "100vh", display: "flex", flexDirection: "column" }}>
       <TopBar />
+      <TabBar />
+      <KitEditBanner />
       <div style={{ flex: 1, display: "flex", minHeight: 0 }}>
         <ToolBar />
         <Canvas />
@@ -189,6 +227,7 @@ export default function Editor() {
         </div>
       </div>
       <StatusBar />
+      <DialogHost />
     </div>
   );
 }
