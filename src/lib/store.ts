@@ -2,6 +2,7 @@
 import { create } from "zustand";
 import type {
   Layer,
+  Frame,
   Tool,
   ShapeMode,
   HistoryEntry,
@@ -13,9 +14,10 @@ import type {
 import { PICO8 } from "./color";
 import {
   createPixelBuffer,
-  setLayerBuffer,
-  getLayerBuffer,
-  deleteLayerBuffer,
+  celKey,
+  getCelBuffer,
+  setCelBuffer,
+  deleteCelBuffer,
   cloneBuffer,
 } from "./pixels";
 import type { Kit, KitSprite } from "./kits";
@@ -29,6 +31,12 @@ import {
 } from "./user-kits";
 
 const HISTORY_LIMIT = 100;
+const DEFAULT_FRAME_DURATION = 100; // ms
+
+// Playback timing lives outside the store so ticking it never enters history
+// or the autosave signature. play()/pause()/stop() manage this RAF handle.
+let playRaf = 0;
+let playClock = 0;
 
 function uid() {
   return Math.random().toString(36).slice(2, 10);
@@ -39,6 +47,13 @@ type State = {
   height: number;
   layers: Layer[];
   activeLayerId: string;
+  frames: Frame[];
+  activeFrameId: string;
+  loop: boolean;
+  /** True while the timeline is playing back. */
+  playing: boolean;
+  /** Frame currently shown during playback (transient — never edited/persisted). */
+  previewFrameId: string | null;
   palette: string[];
   activeColor: string;
   paletteLocked: boolean;
@@ -93,6 +108,16 @@ type Actions = {
   reorderLayer: (id: string, direction: -1 | 1) => void;
   setActiveLayer: (id: string) => void;
   bumpLayerRev: (id: string) => void;
+  addFrame: () => void;
+  duplicateFrame: (id: string) => void;
+  deleteFrame: (id: string) => void;
+  reorderFrame: (id: string, direction: -1 | 1) => void;
+  setActiveFrame: (id: string) => void;
+  setFrameDuration: (id: string, duration: number) => void;
+  toggleLoop: () => void;
+  play: () => void;
+  pause: () => void;
+  stop: () => void;
   pushHistory: (entry: HistoryEntry) => void;
   beginStroke: (layerId: string) => Uint8ClampedArray | null;
   commitStroke: (layerId: string, before: Uint8ClampedArray) => void;
@@ -131,14 +156,19 @@ type Actions = {
 };
 
 export type SerializedDoc = {
-  version: 1;
+  version: 1 | 2;
   width: number;
   height: number;
   layers: Layer[];
   activeLayerId: string;
   palette: string[];
   activeColor: string;
+  // v1: keyed by layerId. v2: keyed by celKey(layerId, frameId).
   pixelData: Record<string, string>;
+  // v2 animation fields — absent on legacy v1 saves (migrated on load).
+  frames?: Frame[];
+  activeFrameId?: string;
+  loop?: boolean;
 };
 
 function bufferToBase64(buf: Uint8ClampedArray): string {
@@ -161,12 +191,16 @@ function base64ToBuffer(b64: string): Uint8ClampedArray {
 
 function blankSerializedDoc(w: number, h: number): SerializedDoc {
   const layerId = uid();
+  const frameId = uid();
   return {
-    version: 1,
+    version: 2,
     width: w,
     height: h,
     layers: [{ id: layerId, name: "Layer 1", visible: true, locked: false, opacity: 1, rev: 0 }],
     activeLayerId: layerId,
+    frames: [{ id: frameId, name: "Frame 1", duration: DEFAULT_FRAME_DURATION }],
+    activeFrameId: frameId,
+    loop: true,
     palette: PICO8.slice(),
     activeColor: PICO8[7],
     pixelData: {},
@@ -188,35 +222,59 @@ function makeLayer(name: string): Layer {
   };
 }
 
+function makeFrame(name: string): Frame {
+  return { id: uid(), name, duration: DEFAULT_FRAME_DURATION };
+}
+
 function defaultDoc(width: number, height: number) {
   const layer = makeLayer("Layer 1");
-  setLayerBuffer(layer.id, createPixelBuffer(width, height));
+  const frame = makeFrame("Frame 1");
+  setCelBuffer(layer.id, frame.id, createPixelBuffer(width, height));
   return {
     width,
     height,
     layers: [layer],
     activeLayerId: layer.id,
+    frames: [frame],
+    activeFrameId: frame.id,
   };
 }
 
 const initial = defaultDoc(32, 32);
 const initialTabId = uid();
 const initialTabDoc: SerializedDoc = {
-  version: 1,
+  version: 2,
   width: initial.width,
   height: initial.height,
   layers: initial.layers,
   activeLayerId: initial.activeLayerId,
+  frames: initial.frames,
+  activeFrameId: initial.activeFrameId,
+  loop: true,
   palette: PICO8.slice(),
   activeColor: PICO8[7],
   pixelData: {},
 };
 
-export const useStore = create<State & Actions>((set, get) => ({
+export const useStore = create<State & Actions>((set, get) => {
+  // Buffer for the active layer on the active frame — the default edit target.
+  const activeCel = (layerId: string) => getCelBuffer(layerId, get().activeFrameId);
+  // Wipe every cel of the current document (all layer×frame buffers).
+  const wipeAllCels = () => {
+    const st = get();
+    for (const f of st.frames) for (const l of st.layers) deleteCelBuffer(l.id, f.id);
+  };
+
+  return {
   width: initial.width,
   height: initial.height,
   layers: initial.layers,
   activeLayerId: initial.activeLayerId,
+  frames: initial.frames,
+  activeFrameId: initial.activeFrameId,
+  loop: true,
+  playing: false,
+  previewFrameId: null,
   palette: PICO8.slice(),
   activeColor: PICO8[7],
   paletteLocked: false,
@@ -241,16 +299,19 @@ export const useStore = create<State & Actions>((set, get) => ({
   tabCounter: 1,
 
   newDocument: (width, height) => {
-    // wipe existing buffers
-    for (const l of get().layers) deleteLayerBuffer(l.id);
+    // wipe existing cels across all frames
+    wipeAllCels();
     const fresh = defaultDoc(width, height);
     set({
       ...fresh,
+      loop: true,
+      playing: false,
+      previewFrameId: null,
       history: [],
       redoStack: [],
       selection: null,
       floating: null,
-      zoom: Math.max(2, Math.min(24, Math.floor(480 / Math.max(width, height)))),
+      zoom: fitZoom(width, height),
       docVersion: get().docVersion + 1,
     });
   },
@@ -274,31 +335,43 @@ export const useStore = create<State & Actions>((set, get) => ({
   setCursorPixel: (cursorPixel) => set({ cursorPixel }),
 
   addLayer: () => {
-    const layer = makeLayer(`Layer ${get().layers.length + 1}`);
-    setLayerBuffer(layer.id, createPixelBuffer(get().width, get().height));
-    set({ layers: [...get().layers, layer], activeLayerId: layer.id });
+    const st = get();
+    const layer = makeLayer(`Layer ${st.layers.length + 1}`);
+    // a new layer gets an empty cel on every frame
+    for (const f of st.frames) {
+      setCelBuffer(layer.id, f.id, createPixelBuffer(st.width, st.height));
+    }
+    set({ layers: [...st.layers, layer], activeLayerId: layer.id });
   },
 
   duplicateLayer: (id) => {
-    const src = get().layers.find((l) => l.id === id);
+    const st = get();
+    const src = st.layers.find((l) => l.id === id);
     if (!src) return;
-    const buf = getLayerBuffer(id);
-    if (!buf) return;
     const layer: Layer = { ...src, id: uid(), name: `${src.name} copy`, rev: 0 };
-    setLayerBuffer(layer.id, cloneBuffer(buf));
-    const idx = get().layers.findIndex((l) => l.id === id);
-    const next = get().layers.slice();
+    // clone the source layer's cel on every frame
+    for (const f of st.frames) {
+      const srcBuf = getCelBuffer(id, f.id);
+      setCelBuffer(
+        layer.id,
+        f.id,
+        srcBuf ? cloneBuffer(srcBuf) : createPixelBuffer(st.width, st.height),
+      );
+    }
+    const idx = st.layers.findIndex((l) => l.id === id);
+    const next = st.layers.slice();
     next.splice(idx + 1, 0, layer);
     set({ layers: next, activeLayerId: layer.id });
   },
 
   deleteLayer: (id) => {
-    const layers = get().layers;
-    if (layers.length <= 1) return;
-    deleteLayerBuffer(id);
-    const idx = layers.findIndex((l) => l.id === id);
-    const next = layers.filter((l) => l.id !== id);
-    const nextActive = get().activeLayerId === id ? next[Math.max(0, idx - 1)].id : get().activeLayerId;
+    const st = get();
+    if (st.layers.length <= 1) return;
+    // drop this layer's cel on every frame
+    for (const f of st.frames) deleteCelBuffer(id, f.id);
+    const idx = st.layers.findIndex((l) => l.id === id);
+    const next = st.layers.filter((l) => l.id !== id);
+    const nextActive = st.activeLayerId === id ? next[Math.max(0, idx - 1)].id : st.activeLayerId;
     set({ layers: next, activeLayerId: nextActive });
   },
 
@@ -334,6 +407,119 @@ export const useStore = create<State & Actions>((set, get) => ({
   bumpLayerRev: (id) =>
     set({ layers: get().layers.map((l) => (l.id === id ? { ...l, rev: l.rev + 1 } : l)) }),
 
+  // ---- Frames / timeline ----
+
+  setActiveFrame: (id) => {
+    const st = get();
+    if (st.playing) get().stop();
+    if (!st.frames.some((f) => f.id === id)) return;
+    set({ activeFrameId: id, selection: null, floating: null });
+  },
+
+  addFrame: () => {
+    const st = get();
+    const frame = makeFrame(`Frame ${st.frames.length + 1}`);
+    // new frame is blank: an empty cel for every layer
+    for (const l of st.layers) setCelBuffer(l.id, frame.id, createPixelBuffer(st.width, st.height));
+    const idx = st.frames.findIndex((f) => f.id === st.activeFrameId);
+    const frames = st.frames.slice();
+    frames.splice(idx + 1, 0, frame);
+    set({ frames, activeFrameId: frame.id, selection: null, floating: null });
+  },
+
+  duplicateFrame: (id) => {
+    const st = get();
+    const src = st.frames.find((f) => f.id === id);
+    if (!src) return;
+    const frame = makeFrame(`${src.name} copy`);
+    frame.duration = src.duration;
+    // copy every layer's cel from the source frame
+    for (const l of st.layers) {
+      const srcBuf = getCelBuffer(l.id, src.id);
+      setCelBuffer(
+        l.id,
+        frame.id,
+        srcBuf ? cloneBuffer(srcBuf) : createPixelBuffer(st.width, st.height),
+      );
+    }
+    const idx = st.frames.findIndex((f) => f.id === src.id);
+    const frames = st.frames.slice();
+    frames.splice(idx + 1, 0, frame);
+    set({ frames, activeFrameId: frame.id, selection: null, floating: null });
+  },
+
+  deleteFrame: (id) => {
+    const st = get();
+    if (st.frames.length <= 1) return;
+    for (const l of st.layers) deleteCelBuffer(l.id, id);
+    const idx = st.frames.findIndex((f) => f.id === id);
+    const frames = st.frames.filter((f) => f.id !== id);
+    const nextActive =
+      st.activeFrameId === id ? frames[Math.max(0, idx - 1)].id : st.activeFrameId;
+    set({ frames, activeFrameId: nextActive, selection: null, floating: null });
+  },
+
+  reorderFrame: (id, direction) => {
+    const frames = get().frames.slice();
+    const i = frames.findIndex((f) => f.id === id);
+    const j = i + direction;
+    if (i < 0 || j < 0 || j >= frames.length) return;
+    [frames[i], frames[j]] = [frames[j], frames[i]];
+    set({ frames });
+  },
+
+  setFrameDuration: (id, duration) => {
+    const d = Math.max(10, Math.min(10000, Math.round(duration)));
+    set({ frames: get().frames.map((f) => (f.id === id ? { ...f, duration: d } : f)) });
+  },
+
+  toggleLoop: () => set({ loop: !get().loop }),
+
+  play: () => {
+    const st = get();
+    if (st.playing || st.frames.length < 2) return;
+    set({ playing: true, previewFrameId: st.activeFrameId });
+    playClock = 0;
+    let last = performance.now();
+    const tick = (now: number) => {
+      const s = get();
+      if (!s.playing) return;
+      playClock += now - last;
+      last = now;
+      let idx = s.frames.findIndex((f) => f.id === s.previewFrameId);
+      if (idx < 0) idx = 0;
+      let guard = 0;
+      while (playClock >= s.frames[idx].duration && guard++ < 10000) {
+        playClock -= s.frames[idx].duration;
+        idx++;
+        if (idx >= s.frames.length) {
+          if (s.loop) {
+            idx = 0;
+          } else {
+            set({ playing: false, previewFrameId: null });
+            return;
+          }
+        }
+      }
+      set({ previewFrameId: s.frames[idx].id });
+      playRaf = requestAnimationFrame(tick);
+    };
+    playRaf = requestAnimationFrame(tick);
+  },
+
+  pause: () => {
+    if (playRaf) cancelAnimationFrame(playRaf);
+    playRaf = 0;
+    set({ playing: false });
+  },
+
+  stop: () => {
+    if (playRaf) cancelAnimationFrame(playRaf);
+    playRaf = 0;
+    playClock = 0;
+    set({ playing: false, previewFrameId: null });
+  },
+
   pushHistory: (entry) => {
     const history = [...get().history, entry];
     if (history.length > HISTORY_LIMIT) history.shift();
@@ -341,13 +527,13 @@ export const useStore = create<State & Actions>((set, get) => ({
   },
 
   beginStroke: (layerId) => {
-    const buf = getLayerBuffer(layerId);
+    const buf = activeCel(layerId);
     if (!buf) return null;
     return cloneBuffer(buf);
   },
 
   commitStroke: (layerId, before) => {
-    const buf = getLayerBuffer(layerId);
+    const buf = activeCel(layerId);
     if (!buf) return;
     // skip if no change
     let changed = false;
@@ -359,7 +545,7 @@ export const useStore = create<State & Actions>((set, get) => ({
     }
     if (!changed) return;
     const after = cloneBuffer(buf);
-    get().pushHistory({ type: "pixels", layerId, before, after });
+    get().pushHistory({ type: "pixels", layerId, frameId: get().activeFrameId, before, after });
     get().bumpLayerRev(layerId);
   },
 
@@ -367,13 +553,16 @@ export const useStore = create<State & Actions>((set, get) => ({
     const history = get().history.slice();
     const entry = history.pop();
     if (!entry) return;
-    const buf = getLayerBuffer(entry.layerId);
+    const buf = getCelBuffer(entry.layerId, entry.frameId);
     if (buf) {
       buf.set(entry.before);
     }
+    // jump to where the change happened so it's visible
     set({
       history,
       redoStack: [...get().redoStack, entry],
+      activeFrameId: entry.frameId,
+      activeLayerId: entry.layerId,
     });
     get().bumpLayerRev(entry.layerId);
   },
@@ -382,36 +571,74 @@ export const useStore = create<State & Actions>((set, get) => ({
     const redo = get().redoStack.slice();
     const entry = redo.pop();
     if (!entry) return;
-    const buf = getLayerBuffer(entry.layerId);
+    const buf = getCelBuffer(entry.layerId, entry.frameId);
     if (buf) {
       buf.set(entry.after);
     }
     set({
       redoStack: redo,
       history: [...get().history, entry],
+      activeFrameId: entry.frameId,
+      activeLayerId: entry.layerId,
     });
     get().bumpLayerRev(entry.layerId);
   },
 
   loadDocument: (snap) => {
-    for (const l of get().layers) deleteLayerBuffer(l.id);
-    for (const l of snap.layers) {
-      const data = snap.pixelData[l.id];
-      if (data) setLayerBuffer(l.id, base64ToBuffer(data));
-      else setLayerBuffer(l.id, createPixelBuffer(snap.width, snap.height));
+    // drop the outgoing document's cels before loading the new one
+    wipeAllCels();
+
+    let frames: Frame[];
+    let activeFrameId: string;
+    if (snap.frames && snap.frames.length > 0) {
+      // v2: cels keyed by celKey(layerId, frameId)
+      frames = snap.frames;
+      activeFrameId =
+        snap.activeFrameId && frames.some((f) => f.id === snap.activeFrameId)
+          ? snap.activeFrameId
+          : frames[0].id;
+      for (const f of frames) {
+        for (const l of snap.layers) {
+          const data = snap.pixelData[celKey(l.id, f.id)];
+          setCelBuffer(
+            l.id,
+            f.id,
+            data ? base64ToBuffer(data) : createPixelBuffer(snap.width, snap.height),
+          );
+        }
+      }
+    } else {
+      // v1 migration: a single frame whose pixelData is keyed by layerId
+      const frame = makeFrame("Frame 1");
+      frames = [frame];
+      activeFrameId = frame.id;
+      for (const l of snap.layers) {
+        const data = snap.pixelData[l.id];
+        setCelBuffer(
+          l.id,
+          frame.id,
+          data ? base64ToBuffer(data) : createPixelBuffer(snap.width, snap.height),
+        );
+      }
     }
+
     set({
       width: snap.width,
       height: snap.height,
       layers: snap.layers,
       activeLayerId: snap.activeLayerId,
+      frames,
+      activeFrameId,
+      loop: snap.loop ?? true,
+      playing: false,
+      previewFrameId: null,
       palette: snap.palette,
       activeColor: snap.activeColor,
       history: [],
       redoStack: [],
       selection: null,
       floating: null,
-      zoom: Math.max(2, Math.min(24, Math.floor(480 / Math.max(snap.width, snap.height)))),
+      zoom: fitZoom(snap.width, snap.height),
       docVersion: get().docVersion + 1,
     });
   },
@@ -421,25 +648,28 @@ export const useStore = create<State & Actions>((set, get) => ({
     w = Math.max(1, Math.min(512, Math.round(w)));
     h = Math.max(1, Math.min(512, Math.round(h)));
     if (w === state.width && h === state.height) return;
+    const copyW = Math.min(state.width, w);
+    const copyH = Math.min(state.height, h);
+    // resize every cel (each layer × frame buffer)
     for (const layer of state.layers) {
-      const oldBuf = getLayerBuffer(layer.id);
-      if (!oldBuf) continue;
-      const newBuf = createPixelBuffer(w, h);
-      const copyW = Math.min(state.width, w);
-      const copyH = Math.min(state.height, h);
-      for (let y = 0; y < copyH; y++) {
-        const srcRow = y * state.width;
-        const dstRow = y * w;
-        for (let x = 0; x < copyW; x++) {
-          const srcI = (srcRow + x) * 4;
-          const dstI = (dstRow + x) * 4;
-          newBuf[dstI] = oldBuf[srcI];
-          newBuf[dstI + 1] = oldBuf[srcI + 1];
-          newBuf[dstI + 2] = oldBuf[srcI + 2];
-          newBuf[dstI + 3] = oldBuf[srcI + 3];
+      for (const frame of state.frames) {
+        const oldBuf = getCelBuffer(layer.id, frame.id);
+        if (!oldBuf) continue;
+        const newBuf = createPixelBuffer(w, h);
+        for (let y = 0; y < copyH; y++) {
+          const srcRow = y * state.width;
+          const dstRow = y * w;
+          for (let x = 0; x < copyW; x++) {
+            const srcI = (srcRow + x) * 4;
+            const dstI = (dstRow + x) * 4;
+            newBuf[dstI] = oldBuf[srcI];
+            newBuf[dstI + 1] = oldBuf[srcI + 1];
+            newBuf[dstI + 2] = oldBuf[srcI + 2];
+            newBuf[dstI + 3] = oldBuf[srcI + 3];
+          }
         }
+        setCelBuffer(layer.id, frame.id, newBuf);
       }
-      setLayerBuffer(layer.id, newBuf);
     }
     set({
       width: w,
@@ -516,16 +746,21 @@ export const useStore = create<State & Actions>((set, get) => ({
   serialize: () => {
     const s = get();
     const pixelData: Record<string, string> = {};
-    for (const l of s.layers) {
-      const buf = getLayerBuffer(l.id);
-      if (buf) pixelData[l.id] = bufferToBase64(buf);
+    for (const f of s.frames) {
+      for (const l of s.layers) {
+        const buf = getCelBuffer(l.id, f.id);
+        if (buf) pixelData[celKey(l.id, f.id)] = bufferToBase64(buf);
+      }
     }
     return {
-      version: 1,
+      version: 2,
       width: s.width,
       height: s.height,
       layers: s.layers,
       activeLayerId: s.activeLayerId,
+      frames: s.frames,
+      activeFrameId: s.activeFrameId,
+      loop: s.loop,
       palette: s.palette,
       activeColor: s.activeColor,
       pixelData,
@@ -540,7 +775,7 @@ export const useStore = create<State & Actions>((set, get) => ({
     if (s.floating) {
       get().commitFloating();
     }
-    const buf = getLayerBuffer(layerId);
+    const buf = activeCel(layerId);
     if (!buf) return;
     const before = cloneBuffer(buf);
     const pixels = new Uint8ClampedArray(rect.w * rect.h * 4);
@@ -594,7 +829,7 @@ export const useStore = create<State & Actions>((set, get) => ({
     const f = s.floating;
     if (!f) return;
     const targetLayerId = s.activeLayerId;
-    const buf = getLayerBuffer(targetLayerId);
+    const buf = activeCel(targetLayerId);
     if (!buf) {
       set({ floating: null });
       return;
@@ -647,7 +882,7 @@ export const useStore = create<State & Actions>((set, get) => ({
     const f = s.floating;
     if (!f) return;
     // restore original pixels back to the source layer at origX/Y
-    const buf = getLayerBuffer(f.origLayerId);
+    const buf = activeCel(f.origLayerId);
     if (!buf) {
       set({ floating: null });
       return;
@@ -692,20 +927,24 @@ export const useStore = create<State & Actions>((set, get) => ({
         ? { ...t, doc: state.serialize(), zoom: state.zoom }
         : t,
     );
-    // Wipe current buffers; install the sprite as a single layer in a fresh tab
-    for (const l of state.layers) deleteLayerBuffer(l.id);
+    // Wipe current cels; install the sprite as a single layer/frame in a fresh tab
+    for (const f of state.frames) for (const l of state.layers) deleteCelBuffer(l.id, f.id);
     const pixels = decodeSprite(sprite);
     const layer = makeLayer("Edit");
+    const frame = makeFrame("Frame 1");
     const buf = createPixelBuffer(sprite.w, sprite.h);
     buf.set(pixels);
-    setLayerBuffer(layer.id, buf);
+    setCelBuffer(layer.id, frame.id, buf);
     const newTabId = uid();
     const newDoc: SerializedDoc = {
-      version: 1,
+      version: 2,
       width: sprite.w,
       height: sprite.h,
       layers: [layer],
       activeLayerId: layer.id,
+      frames: [frame],
+      activeFrameId: frame.id,
+      loop: true,
       palette: PICO8.slice(),
       activeColor: PICO8[7],
       pixelData: {},
@@ -716,6 +955,11 @@ export const useStore = create<State & Actions>((set, get) => ({
       height: sprite.h,
       layers: [layer],
       activeLayerId: layer.id,
+      frames: [frame],
+      activeFrameId: frame.id,
+      loop: true,
+      playing: false,
+      previewFrameId: null,
       palette: newDoc.palette,
       activeColor: newDoc.activeColor,
       history: [],
@@ -756,7 +1000,7 @@ export const useStore = create<State & Actions>((set, get) => ({
     const state = get();
     const editing = state.editingKitSprite;
     if (!editing) return { success: false, error: "Not editing a kit sprite" };
-    const buf = getLayerBuffer(state.activeLayerId);
+    const buf = activeCel(state.activeLayerId);
     if (!buf) return { success: false, error: "No active layer buffer" };
     const { palette, rows } = encodePixelsToKitFormat(buf, state.width, state.height);
 
@@ -910,7 +1154,7 @@ export const useStore = create<State & Actions>((set, get) => ({
     // fallback to plain selection rect
     const sel = s.selection;
     if (!sel) return;
-    const buf = getLayerBuffer(s.activeLayerId);
+    const buf = activeCel(s.activeLayerId);
     if (!buf) return;
     const pixels = new Uint8ClampedArray(sel.w * sel.h * 4);
     for (let y = 0; y < sel.h; y++) {
@@ -942,7 +1186,7 @@ export const useStore = create<State & Actions>((set, get) => ({
     // legacy: cut from selection rect
     const sel = s.selection;
     if (!sel) return;
-    const buf = getLayerBuffer(s.activeLayerId);
+    const buf = activeCel(s.activeLayerId);
     if (!buf) return;
     const before = cloneBuffer(buf);
     const pixels = new Uint8ClampedArray(sel.w * sel.h * 4);
@@ -1007,7 +1251,7 @@ export const useStore = create<State & Actions>((set, get) => ({
     }
     const sel = s.selection;
     if (!sel) return;
-    const buf = getLayerBuffer(s.activeLayerId);
+    const buf = activeCel(s.activeLayerId);
     if (!buf) return;
     const before = cloneBuffer(buf);
     for (let y = 0; y < sel.h; y++) {
@@ -1024,4 +1268,5 @@ export const useStore = create<State & Actions>((set, get) => ({
     }
     get().commitStroke(s.activeLayerId, before);
   },
-}));
+  };
+});

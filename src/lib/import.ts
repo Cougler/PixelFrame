@@ -1,6 +1,6 @@
 "use client";
 import { useStore } from "./store";
-import { getLayerBuffer } from "./pixels";
+import { getCelBuffer } from "./pixels";
 
 const MAX_DIM = 512;
 
@@ -51,8 +51,8 @@ export async function importPngFile(
 
     const store = useStore.getState();
     store.newDocument(w, h);
-    const activeId = useStore.getState().activeLayerId;
-    const buf = getLayerBuffer(activeId);
+    const { activeLayerId: activeId, activeFrameId } = useStore.getState();
+    const buf = getCelBuffer(activeId, activeFrameId);
     if (buf && buf.length === data.data.length) {
       buf.set(data.data);
       useStore.getState().bumpLayerRev(activeId);

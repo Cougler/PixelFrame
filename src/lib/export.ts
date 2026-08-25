@@ -1,11 +1,12 @@
 "use client";
-import { getLayerBuffer } from "./pixels";
+import { getCelBuffer } from "./pixels";
 import type { Layer } from "./types";
 
 export function compositeToCanvas(
   layers: Layer[],
   width: number,
   height: number,
+  frameId: string,
 ): HTMLCanvasElement {
   const out = document.createElement("canvas");
   out.width = width;
@@ -13,7 +14,7 @@ export function compositeToCanvas(
   const ctx = out.getContext("2d")!;
   for (const layer of layers) {
     if (!layer.visible) continue;
-    const buf = getLayerBuffer(layer.id);
+    const buf = getCelBuffer(layer.id, frameId);
     if (!buf) continue;
     const tmp = document.createElement("canvas");
     tmp.width = width;
@@ -28,8 +29,14 @@ export function compositeToCanvas(
   return out;
 }
 
-export function exportPng(layers: Layer[], width: number, height: number, scale = 1) {
-  const composed = compositeToCanvas(layers, width, height);
+export function exportPng(
+  layers: Layer[],
+  width: number,
+  height: number,
+  frameId: string,
+  scale = 1,
+) {
+  const composed = compositeToCanvas(layers, width, height, frameId);
   let final = composed;
   if (scale !== 1) {
     final = document.createElement("canvas");

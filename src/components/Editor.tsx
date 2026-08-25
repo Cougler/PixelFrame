@@ -10,6 +10,7 @@ import PalettePanel from "./PalettePanel";
 import StatusBar from "./StatusBar";
 import KitEditBanner from "./KitEditBanner";
 import TabBar from "./TabBar";
+import Timeline from "./Timeline";
 import DialogHost from "./DialogHost";
 import type { Tool } from "@/lib/types";
 
@@ -71,10 +72,12 @@ export default function Editor() {
     const unsub = useStore.subscribe((state, prev) => {
       const sigA =
         state.layers.map((l) => `${l.id}:${l.rev}`).join("|") +
-        `|${state.width}x${state.height}|${state.activeTabId}|${state.tabs.length}|${state.tabs.map((t) => `${t.id}:${t.name}`).join(",")}`;
+        `|${state.width}x${state.height}|${state.activeTabId}|${state.tabs.length}|${state.tabs.map((t) => `${t.id}:${t.name}`).join(",")}` +
+        `|${state.activeFrameId}|${state.frames.map((f) => `${f.id}:${f.duration}`).join(",")}|${state.loop ? 1 : 0}`;
       const sigB =
         prev.layers.map((l) => `${l.id}:${l.rev}`).join("|") +
-        `|${prev.width}x${prev.height}|${prev.activeTabId}|${prev.tabs.length}|${prev.tabs.map((t) => `${t.id}:${t.name}`).join(",")}`;
+        `|${prev.width}x${prev.height}|${prev.activeTabId}|${prev.tabs.length}|${prev.tabs.map((t) => `${t.id}:${t.name}`).join(",")}` +
+        `|${prev.activeFrameId}|${prev.frames.map((f) => `${f.id}:${f.duration}`).join(",")}|${prev.loop ? 1 : 0}`;
       const palA = state.palette.join(",");
       const palB = prev.palette.join(",");
       if (sigA !== sigB || palA !== palB || state.activeColor !== prev.activeColor) {
@@ -226,6 +229,7 @@ export default function Editor() {
           <PalettePanel />
         </div>
       </div>
+      <Timeline />
       <StatusBar />
       <DialogHost />
     </div>
