@@ -28,6 +28,7 @@ import {
   screenToWorld,
 } from "@/lib/floating";
 import { decodeSprite, findSprite, SPRITE_DRAG_TYPE } from "@/lib/kits";
+import { compositeToCanvas } from "@/lib/export";
 import FloatingActions from "./FloatingActions";
 
 type Pixel = { x: number; y: number };
@@ -74,10 +75,12 @@ export default function Canvas() {
     width,
     height,
     layers,
+    frames,
     activeLayerId,
     activeFrameId,
     playing,
     previewFrameId,
+    onion,
     activeColor,
     tool,
     shapeMode,
@@ -173,6 +176,36 @@ export default function Canvas() {
     // checker bg behind artwork
     drawChecker(ctx, panX, panY, width * zoom, height * zoom);
 
+    // onion skin: ghost neighbouring frames behind the active one (edit mode only)
+    if (onion.enabled && !playing) {
+      const idx = frames.findIndex((f) => f.id === activeFrameId);
+      const drawGhost = (frameId: string, alpha: number, tint: string | null) => {
+        const ghost = compositeToCanvas(layers, width, height, frameId);
+        if (tint) {
+          const gctx = ghost.getContext("2d")!;
+          gctx.globalCompositeOperation = "source-atop";
+          gctx.fillStyle = tint;
+          gctx.fillRect(0, 0, width, height);
+          gctx.globalCompositeOperation = "source-over";
+        }
+        ctx.globalAlpha = Math.max(0, Math.min(1, alpha));
+        ctx.imageSmoothingEnabled = false;
+        ctx.drawImage(ghost, panX, panY, width * zoom, height * zoom);
+        ctx.globalAlpha = 1;
+      };
+      if (idx >= 0) {
+        // farthest first so nearer (more opaque) ghosts land on top
+        for (let d = onion.prev; d >= 1; d--) {
+          const j = idx - d;
+          if (j >= 0) drawGhost(frames[j].id, onion.opacity * (1 - (d - 1) * 0.3), onion.tint ? "#3b6ef5" : null);
+        }
+        for (let d = onion.next; d >= 1; d--) {
+          const j = idx + d;
+          if (j < frames.length) drawGhost(frames[j].id, onion.opacity * (1 - (d - 1) * 0.3), onion.tint ? "#f0506e" : null);
+        }
+      }
+    }
+
     // draw layers (cels of the frame currently displayed)
     for (const layer of layers) {
       if (!layer.visible) continue;
@@ -231,7 +264,7 @@ export default function Canvas() {
       width * zoom + 1,
       height * zoom + 1,
     );
-  }, [layers, width, height, zoom, panX, panY, showGrid, syncLayerCanvas, floating, ensureFloatingCanvas, displayFrameId]);
+  }, [layers, frames, width, height, zoom, panX, panY, showGrid, syncLayerCanvas, floating, ensureFloatingCanvas, displayFrameId, onion, playing, activeFrameId]);
 
   useEffect(() => {
     renderRef.current = render;
