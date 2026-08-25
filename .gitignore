@@ -8,3 +8,5 @@ build/
 .vercel
 next-env.d.ts
 tsconfig.tsbuildinfo
+.mc.json
+missionlog.md
