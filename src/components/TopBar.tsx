@@ -3,7 +3,7 @@ import { useRef, useState } from "react";
 import { useStore } from "@/lib/store";
 import { exportPng, exportGif, exportSpriteSheet, exportPngSequence } from "@/lib/export";
 import { importPngFile, readImageDimensions } from "@/lib/import";
-import { Download, FilePlus, FileBox, Upload } from "lucide-react";
+import { Download, FilePlus, Upload } from "lucide-react";
 import CanvasSizePicker from "./CanvasSizePicker";
 import { alertDialog, confirmDialog } from "@/lib/dialog";
 
@@ -121,10 +121,11 @@ export default function TopBar() {
         flexShrink: 0,
       }}
     >
-      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-        <FileBox size={16} color="var(--accent)" />
-        <span style={{ fontWeight: 600, fontSize: 13 }}>PixelFrame</span>
-      </div>
+      <img
+        src="/logo.png"
+        alt="PixelFrame"
+        style={{ height: 20, width: "auto", imageRendering: "pixelated" }}
+      />
 
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginLeft: 12 }}>
         <span style={{ fontSize: 11, color: "var(--text-muted)" }}>Canvas size:</span>
